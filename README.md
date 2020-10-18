@@ -1,6 +1,8 @@
 # daylight-wallpaper
 A simple script to set certain wallpapers at various times during the day
-depending on the current daylight at your location.
+depending on the current daylight at your location. I'm using these with a
+collection of MacOS Big Sur wallpapers that I found online. Just rename the
+files in accordance with the help text instructions.
 
 ## Example usage
 I recommend using this with **cron** and a few environment variables as such:
