@@ -71,14 +71,23 @@ fi
 DAY_BEGIN="$(date --date "$(date --iso)" +"%s")"
 DAY_END="$(date --date "$(date --iso) 23:59:59" +"%s")"
 
+print_debug() {
+    [ "$debug" -eq 1 ] && echo "$1"
+}
+
 # Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
 fetch_sun_data() {
-    [ "$debug" -eq 1 ] && echo "Deleting old sun_data files"
+    print_debug "Performing new sun_data fetch."
+    print_debug "Deleting old sun_data files"
     find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER" -delete
-    [ "$debug" -eq 1 ] && echo "Fetching new sun_data from the API"
+
+    print_debug "Fetching new sun_data from the API"
     sun_data="$(curl -s \
         https://api.sunrise-sunset.org/json\?lat="$LAT"\&lng="$LONG"\&formatted=0)"
-    echo "$sun_data" > /tmp/sun_data_"$(date +"%s")".json
+
+    new_sun_data_file="/tmp/sun_data_"$(date +"%s")".json"
+    print_debug "Saving sun data to file: $new_sun_data_file"
+    echo "$sun_data" > "$new_sun_data_file"
 }
 
 # Check to see if there is already local sun_data saved from a previous run.
@@ -86,36 +95,27 @@ check_local_sun_data() {
     files="$(find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER")"
     number_of_files="$(wc -l <<< "$files")"
 
-    if [ "$debug" -eq 1 ]; then
-        cat <<EOF
-The following old sun_data files were found:
-$files
-Number of files: $number_of_files
-EOF
-    fi
+    print_debug "The following old sun_data files were found:"
+    print_debug "$files"
+    print_debug "Number of files: $number_of_files"
 
     if [ "$number_of_files" -eq 1 ]; then
         filename="${files[0]}"
         file_time_with_ending="${filename##*\_}"
         file_time="${file_time_with_ending%\.*}"
-        [ "$debug" -eq 1 ] && echo "File time is $file_time"
+        print_debug "File time is $file_time"
 
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
         if [ "$file_time" -ge "$DAY_BEGIN" ] && [ "$file_time" -lt "$DAY_END" ]; then
-            [ "$debug" -eq 1 ] && echo "File time is within current day"
+            print_debug "File time is within current day"
             sun_data="$(cat "$filename")"
         else
-            [ "$debug" -eq 1 ] && echo "File time is NOT within current day"
+            print_debug "File time is NOT within current day"
             fetch_sun_data
         fi
     else
-        if [ "$debug" -eq 1 ]; then
-           cat <<EOF
-No files were found, or more than one file was found.
-Will perform a new sun_data fetch.
-EOF
-        fi
+        print_debug "No files were found, or more than one file was found."
         fetch_sun_data
     fi
 }
@@ -124,6 +124,7 @@ check_local_sun_data
 
 # Parse the json response to extract the wanted string.
 parse_response() {
+    print_debug "Parsing sun_data"
     if [ "$#" -eq 1 ]; then
         jq --arg x "$1" '.[$x]' <<< "$sun_data" | sed 's/\"//g'
     elif [ "$#" -eq 2 ]; then
@@ -190,9 +191,7 @@ fi
 trimmed_folder="${folder%/}"
 WALLPAPER="${trimmed_folder}/${period}.jpg"
 
-if [ $debug -eq 1 ]; then
-    echo "It's currently: $period"
-    echo "Setting the wallpaper: $WALLPAPER"
-fi
+print_debug "It's currently: $period"
+print_debug "Setting the wallpaper: $WALLPAPER"
 
 feh --bg-fill "$WALLPAPER"
