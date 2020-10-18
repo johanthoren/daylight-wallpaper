@@ -86,6 +86,10 @@ parse_response() {
     fi
 }
 
+# Set the boundraries of the current day.
+DAY_BEGIN="$(date --date "$(date --iso)" +"%s")"
+DAY_END="$(date --date "$(date --iso) 23:59:59" +"%s")"
+
 # Exit if the fetch was not "OK".
 API_STATUS="$(parse_response status)"
 if [ "$API_STATUS" != "OK" ]; then
@@ -110,15 +114,19 @@ NAUT_TWI_END="$(parse_response results nautical_twilight_end)"
 TIME="$(date +"%s")"
 
 if [ $debug -eq 1 ]; then
-    echo "The nautical twilight begins $NAUT_TWI_BEGIN"
-    echo "The civil twilight begins $CIV_TWI_BEGIN"
-    echo "The sunrise is at $SUNRISE"
-    echo "The noon is at $NOON"
-    echo "The late afternoon begins $LATE_AFTERNOON"
-    echo "The sunset is at $SUNSET"
-    echo "The civil twilight ends $CIV_TWI_END"
-    echo "The nautical twilight ends $NAUT_TWI_END"
-    echo "The time is now $TIME"
+    cat <<EOF
+The day begins at $DAY_BEGIN
+The nautical twilight begins at $NAUT_TWI_BEGIN
+The civil twilight begins at $CIV_TWI_BEGIN
+The sunrise is at $SUNRISE
+The noon is at $NOON
+The late afternoon begins at $LATE_AFTERNOON
+The sunset is at $SUNSET
+The civil twilight ends at $CIV_TWI_END
+The nautical twilight ends at $NAUT_TWI_END
+The day ends at $DAY_END
+The time is now $TIME
+EOF
 fi
 
 [ "$TIME" -ge "$NAUT_TWI_END" ] || [ "$TIME" -lt "$NAUT_TWI_BEGIN" ] && period="night"
