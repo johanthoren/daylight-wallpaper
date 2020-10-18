@@ -124,7 +124,6 @@ check_local_sun_data
 
 # Parse the json response to extract the wanted string.
 parse_response() {
-    print_debug "Parsing sun_data"
     if [ "$#" -eq 1 ]; then
         jq --arg x "$1" '.[$x]' <<< "$sun_data" | sed 's/\"//g'
     elif [ "$#" -eq 2 ]; then
@@ -140,6 +139,8 @@ parse_response() {
 
 # Exit if the fetch was not "OK".
 API_STATUS="$(parse_response status)"
+print_debug "API Status: $API_STATUS"
+
 if [ "$API_STATUS" != "OK" ]; then
     echo "ERROR: The API request did not finish with an \"OK\" status"
     exit 1
