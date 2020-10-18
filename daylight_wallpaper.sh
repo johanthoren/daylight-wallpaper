@@ -90,7 +90,7 @@ check_local_sun_data() {
         cat <<EOF
 The following old sun_data files were found:
 $files
-Number of file: $number_of_files
+Number of files: $number_of_files
 EOF
     fi
 
