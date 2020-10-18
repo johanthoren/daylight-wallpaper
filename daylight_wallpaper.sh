@@ -67,17 +67,68 @@ fi
 # Make sure that all required variables are set.
 [ -z "$LAT" ] || [ -z "$LONG" ] || [ -z "$folder" ] && usage 1
 
+# Set the boundraries of the current day.
+DAY_BEGIN="$(date --date "$(date --iso)" +"%s")"
+DAY_END="$(date --date "$(date --iso) 23:59:59" +"%s")"
+
 # Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
-SUN_DATA="$(curl -s \
-    https://api.sunrise-sunset.org/json\?lat="$LAT"\&lng="$LONG"\&formatted=0)"
+fetch_sun_data() {
+    [ "$debug" -eq 1 ] && echo "Deleting old sun_data files"
+    find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER" -delete
+    [ "$debug" -eq 1 ] && echo "Fetching new sun_data from the API"
+    sun_data="$(curl -s \
+        https://api.sunrise-sunset.org/json\?lat="$LAT"\&lng="$LONG"\&formatted=0)"
+    echo "$sun_data" > /tmp/sun_data_"$(date +"%s")".json
+}
+
+# Check to see if there is already local sun_data saved from a previous run.
+check_local_sun_data() {
+    files="$(find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER")"
+    number_of_files="$(wc -l <<< "$files")"
+
+    if [ "$debug" -eq 1 ]; then
+        cat <<EOF
+The following old sun_data files were found:
+$files
+Number of file: $number_of_files
+EOF
+    fi
+
+    if [ "$number_of_files" -eq 1 ]; then
+        filename="${files[0]}"
+        file_time_with_ending="${filename##*\_}"
+        file_time="${file_time_with_ending%\.*}"
+        [ "$debug" -eq 1 ] && echo "File time is $file_time"
+
+        # If there already is a file that has been fetched the last day,
+        # then use it to avoid using the API.
+        if [ "$file_time" -ge "$DAY_BEGIN" ] && [ "$file_time" -lt "$DAY_END" ]; then
+            [ "$debug" -eq 1 ] && echo "File time is within current day"
+            sun_data="$(cat "$filename")"
+        else
+            [ "$debug" -eq 1 ] && echo "File time is NOT within current day"
+            fetch_sun_data
+        fi
+    else
+        if [ "$debug" -eq 1 ]; then
+           cat <<EOF
+No files were found, or more than one file was found.
+Will perform a new sun_data fetch.
+EOF
+        fi
+        fetch_sun_data
+    fi
+}
+
+check_local_sun_data
 
 # Parse the json response to extract the wanted string.
 parse_response() {
     if [ "$#" -eq 1 ]; then
-        jq --arg x "$1" '.[$x]' <<< "$SUN_DATA" | sed 's/\"//g'
+        jq --arg x "$1" '.[$x]' <<< "$sun_data" | sed 's/\"//g'
     elif [ "$#" -eq 2 ]; then
         date_time="$(jq --arg x "$1" --arg y "$2" '.[$x][$y]' \
-            <<< "$SUN_DATA" | sed 's/\"//g')"
+            <<< "$sun_data" | sed 's/\"//g')"
         # Transform to unix timestamp for easy math.
         date --date "$date_time" +"%s"
     else
@@ -85,10 +136,6 @@ parse_response() {
         exit 1
     fi
 }
-
-# Set the boundraries of the current day.
-DAY_BEGIN="$(date --date "$(date --iso)" +"%s")"
-DAY_END="$(date --date "$(date --iso) 23:59:59" +"%s")"
 
 # Exit if the fetch was not "OK".
 API_STATUS="$(parse_response status)"
