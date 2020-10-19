@@ -140,7 +140,7 @@ verify_sun_data() {
 }
 
 # Populate the vars to compare against. In chronological order.
-populate_vars(){
+populate_vars() {
     NAUT_TWI_BEGIN="$(parse_response results nautical_twilight_begin)"
     CIV_TWI_BEGIN="$(parse_response results civil_twilight_begin)"
     SUNRISE="$(parse_response results sunrise)"
