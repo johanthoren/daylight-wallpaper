@@ -146,17 +146,30 @@ set_wallpaper() {
 
 # Exit if the sun_data is not "OK".
 verify_sun_data() {
-    API_STATUS="$(parse_response status)"
-    print_debug "API Status: $API_STATUS"
+    try=0
+    while [ "$try" -le 2 ]; do
+         print_debug "Try: $try"
+         API_STATUS="$(parse_response status)"
+         print_debug "API Status: $API_STATUS"
 
-    if [ "$API_STATUS" != "OK" ]; then
-        echo "ERROR: The API request did not finish with an \"OK\" status"
-        period="default"
-        delete_old_files
-        print_debug "Falling back to default wallpaper"
-        set_wallpaper
-        exit 1
-    fi
+         if [ "$API_STATUS" != "OK" ]; then
+             print_debug "The API request did not finish with an \"OK\" status"
+             print_debug "Trying again in 10 seconds"
+             sleep 10
+             fetch_sun_data
+             try+=1
+             if [ "$try" -eq 2 ]; then
+                 print_debug "Too many failed verification attempts"
+                 print_debug "Falling back to default wallpaper"
+                 delete_old_files
+                 period="default"
+                 set_wallpaper
+                 exit 1
+             fi
+         fi
+
+         try+=2
+    done
 }
 
 # Populate the vars to compare against. In chronological order.
