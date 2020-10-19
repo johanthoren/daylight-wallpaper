@@ -205,7 +205,6 @@ while getopts "dhx:y:f:" opt
         d) debug=1;;
         h) usage 0;;
         *) usage 1;;
-
      esac
 done
 
