@@ -25,7 +25,8 @@ usage() {
 Usage: $0 -h | [-d] -x LATITUDE -y LONGITUDE -f FOLDER
 
        The FOLDER needs to contain the following images:
-       - night.jpg"
+       - default.jpg
+       - night.jpg
        - nautical_dawn.jpg
        - civil_dawn.jpg
        - morning.jpg
@@ -68,12 +69,14 @@ define_day() {
     print_debug "The day ends at $DAY_END"
 }
 
-# Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
-fetch_sun_data() {
-    print_debug "Performing new sun_data fetch"
+delete_old_files() {
     print_debug "Deleting old sun_data files"
     find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER" -delete
+}
 
+# Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
+fetch_sun_data() {
+    delete_old_files
     print_debug "Fetching new sun_data from the API"
     sun_data="$(curl -s \
         https://api.sunrise-sunset.org/json\?lat="$LAT"\&lng="$LONG"\&formatted=0)"
@@ -83,18 +86,21 @@ fetch_sun_data() {
     echo "$sun_data" > "$new_sun_data_file"
 }
 
+find_sun_data_files() {
+    find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER"
+}
+
 # Check to see if there is already local sun_data saved from a previous run.
 check_local_sun_data() {
-    files="$(find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER")"
-    number_of_files="$(wc -l <<< "$files")"
-
-    print_debug "The following old sun_data files were found:"
-    print_debug "$files"
-    print_debug "Number of files: $number_of_files"
+    files="$(find_sun_data_files)"
+    number_of_files="$(find_sun_data_files | wc -l)"
 
     if [ "$number_of_files" -eq 1 ]; then
-        filename="${files[0]}"
-        file_time_with_ending="${filename##*\_}"
+        print_debug "The following old sun_data files were found:"
+        print_debug "$files"
+        print_debug "Number of files: $number_of_files"
+        local_file_name="${files[0]}"
+        file_time_with_ending="${local_file_name##*\_}"
         file_time="${file_time_with_ending%\.*}"
         print_debug "File time is $file_time"
 
@@ -102,7 +108,7 @@ check_local_sun_data() {
         # then use it to avoid using the API.
         if [ "$file_time" -ge "$DAY_BEGIN" ] && [ "$file_time" -lt "$DAY_END" ]; then
             print_debug "File time is within current day"
-            sun_data="$(cat "$filename")"
+            sun_data="$(cat "$local_file_name")"
         else
             print_debug "File time is NOT within current day"
             fetch_sun_data
@@ -128,6 +134,16 @@ parse_response() {
     fi
 }
 
+set_wallpaper() {
+    # Remove any trailing slash before trying to use the folder.
+    trimmed_folder="${folder%/}"
+    WALLPAPER="${trimmed_folder}/${period}.jpg"
+
+    print_debug "Setting the wallpaper: $WALLPAPER"
+
+    feh --bg-fill "$WALLPAPER"
+}
+
 # Exit if the sun_data is not "OK".
 verify_sun_data() {
     API_STATUS="$(parse_response status)"
@@ -135,6 +151,10 @@ verify_sun_data() {
 
     if [ "$API_STATUS" != "OK" ]; then
         echo "ERROR: The API request did not finish with an \"OK\" status"
+        period="default"
+        delete_old_files
+        print_debug "Falling back to default wallpaper"
+        set_wallpaper
         exit 1
     fi
 }
@@ -166,6 +186,7 @@ determine_period() {
     [ "$TIME" -ge "$LATE_AFTERNOON" ] && [ "$TIME" -lt "$SUNSET" ] && period="late_afternoon"
     [ "$TIME" -ge "$SUNSET" ] && [ "$TIME" -lt "$CIV_TWI_END" ] && period="civil_dusk"
     [ "$TIME" -ge "$CIV_TWI_END" ] && [ "$TIME" -lt "$NAUT_TWI_END" ] && period="nautical_dusk"
+    print_debug "It's currently: $period"
     [ -z "$period" ] && echo "ERROR: Unable to determine period" && exit 1
 }
 
@@ -183,17 +204,6 @@ The nautical twilight ends at $NAUT_TWI_END
 The time is now $TIME
 EOF
     fi
-}
-
-set_wallpaper() {
-    # Remove any trailing slash before trying to use the folder.
-    trimmed_folder="${folder%/}"
-    WALLPAPER="${trimmed_folder}/${period}.jpg"
-
-    print_debug "It's currently: $period"
-    print_debug "Setting the wallpaper: $WALLPAPER"
-
-    feh --bg-fill "$WALLPAPER"
 }
 
 while getopts "dhx:y:f:" opt
