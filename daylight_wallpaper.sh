@@ -25,7 +25,6 @@ usage() {
 Usage: $0 -h | [-d] -x LATITUDE -y LONGITUDE -f FOLDER
 
        The FOLDER needs to contain the following images:
-       - default.jpg
        - night.jpg
        - nautical_dawn.jpg
        - civil_dawn.jpg
@@ -145,28 +144,41 @@ set_wallpaper() {
     feh --bg-fill "$wallpaper"
 }
 
+take_a_guess() {
+    hour="$(date +"%H")"
+    [ "$hour" -ge 21 ] || [ "$hour" -lt 4 ] && period="night" && return
+    [ "$hour" -ge 4 ] && [ "$hour" -lt 6 ] && period="nautical_dawn" && return
+    [ "$hour" -ge 6 ] && [ "$hour" -lt 8 ] && period="civil_dawn" && return
+    [ "$hour" -ge 8 ] && [ "$hour" -lt 12 ] && period="morning" && return
+    [ "$hour" -ge 12 ] && [ "$hour" -lt 15 ] && period="noon" && return
+    [ "$hour" -ge 15 ] && [ "$hour" -lt 18 ] && period="late_afternoon" && return
+    [ "$hour" -ge 18 ] && [ "$hour" -lt 19 ] && period="civil_dusk" && return
+    [ "$hour" -ge 19 ] && [ "$hour" -lt 21 ] && period="nautical_dusk" && return
+}
+
 # Error handling if the sun_data is not "OK".
 validate_sun_data() {
-    i=0
-    while [ "$i" -le 2 ]; do
-         print_debug "Validation try: $i"
+    i=1
+    while [ "$i" -le 3 ]; do
+         print_debug "Validation try: $i/3"
          api_status="$(parse_response status)"
          print_debug "API Status: $api_status"
 
          if [ "$api_status" != "OK" ]; then
              print_debug "The API request did not finish with an \"OK\" status"
+             print_debug "Taking a guess on what time it could be"
+             take_a_guess
+             print_debug "I think it might be: $period"
+             set_wallpaper
+             if [ "$i" -eq 3 ]; then
+                 print_debug "Too many failed validation attempts"
+                 delete_old_files
+                 exit 1
+             fi
              print_debug "Trying again in 10 seconds"
              sleep 10
              fetch_sun_data
              ((++i))
-             if [ "$i" -eq 2 ]; then
-                 print_debug "Too many failed validation attempts"
-                 print_debug "Falling back to default wallpaper"
-                 delete_old_files
-                 period="default"
-                 set_wallpaper
-                 exit 1
-             fi
          else
              break
          fi
