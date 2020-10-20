@@ -17,12 +17,12 @@
 
 # Optional, set these vars here instead of passing them as options.
 #FOLDER="$HOME/some_folder"
-#LAT="XX.XXXXXXX"
-#LONG="XX.XXXXXXX"
+#lat="XX.XXXXXXX"
+#lon="XX.XXXXXXX"
 
 usage() {
     cat <<EOF
-Usage: $0 -h | [-d] -x LATITUDE -y LONGITUDE -f FOLDER
+Usage: $0 -h | [-d] [-x LATITUDE -y LONGITUDE] -f FOLDER
 
        The FOLDER needs to contain the following images:
        - night.jpg
@@ -46,81 +46,131 @@ print_debug() {
 verify_requirements() {
     # Make sure that all required commands are available.
     if ! command -v curl > /dev/null 2>&1; then
-        echo "ERROR: curl is not installed"
+        echo "ERROR: curl is not installed."
         exit 1
     elif ! command -v feh > /dev/null 2>&1; then
-        echo "ERROR: feh is not installed"
+        echo "ERROR: feh is not installed."
         exit 1
     elif ! command -v jq > /dev/null 2>&1; then
-        echo "ERROR: jq is not installed"
+        echo "ERROR: jq is not installed."
         exit 1
     fi
 
-    # Make sure that all required variables are set.
-    [ -z "$LAT" ] || [ -z "$LONG" ] || [ -z "$FOLDER" ] && usage 1
+    # Make sure that all required constants are set.
+    [ -z "$FOLDER" ] && usage 1
 }
 
 # Set the boundraries of the current day.
 define_day() {
     day_begin="$(date --date "$(date --iso)" +"%s")"
-    print_debug "The day begins at $day_begin"
+    print_debug "The day begins at $day_begin."
     day_end="$(date --date "$(date --iso) 23:59:59" +"%s")"
-    print_debug "The day ends at $day_end"
+    print_debug "The day ends at $day_end."
 }
 
-delete_old_files() {
-    print_debug "Deleting old sun_data files"
-    find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER" -delete
+delete_old_data_files() {
+    print_debug "Deleting old ${1}_data files."
+    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER" -delete
+}
+
+# Fetch geolocation information based on IP from ip-api.com
+fetch_geo_data() {
+    delete_old_data_files "geo"
+    print_debug "Fetching new geo_data from the API."
+    geo_data="$(curl -s \
+        http://ip-api.com/json/\?fields\=status,lat,lon,country,regionName,city)"
+
+    new_geo_data_file="/tmp/geo_data_$(date +"%s").json"
+    print_debug "Saving geo data to file: $new_geo_data_file."
+    echo "$geo_data" > "$new_geo_data_file"
 }
 
 # Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
 fetch_sun_data() {
-    delete_old_files
+    delete_old_data_files "sun"
     print_debug "Fetching new sun_data from the API"
+    if [ -z "$lat" ] || [ -z "$lon" ]; then
+        check_local_geo_data
+        validate_geo_data
+        populate_geo_vars
+    fi
     sun_data="$(curl -s \
-        https://api.sunrise-sunset.org/json\?lat="$LAT"\&lng="$LONG"\&formatted=0)"
+        https://api.sunrise-sunset.org/json\?lat="$lat"\&lng="$lon"\&formatted=0)"
 
     new_sun_data_file="/tmp/sun_data_$(date +"%s").json"
-    print_debug "Saving sun data to file: $new_sun_data_file"
+    print_debug "Saving sun data to file: $new_sun_data_file."
     echo "$sun_data" > "$new_sun_data_file"
 }
 
-find_sun_data_files() {
-    find /tmp -maxdepth 1 -name "sun_data*.json" -user "$USER"
+find_data_files() {
+    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER"
+}
+
+# Check to see if there is already local geo_data saved from a previous run.
+check_local_geo_data() {
+    geo_data_files="$(find_data_files "geo")"
+    number_of_geo_data_files="$(find_data_files "geo" | wc -l)"
+
+    if [ "$number_of_geo_data_files" -eq 1 ]; then
+        print_debug "The following old geo_data files were found:"
+        print_debug "$geo_data_files"
+        print_debug "Number of geo_data files: $number_of_geo_data_files"
+        local_geo_data_file_name="${geo_data_files[0]}"
+        geo_data_file_time_with_ending="${local_geo_data_file_name##*\_}"
+        geo_data_file_time="${geo_data_file_time_with_ending%\.*}"
+        print_debug "The local sun_data file time is $geo_data_file_time."
+
+        # If there already is a file that has been fetched the last day,
+        # then use it to avoid using the API.
+        if [ "$geo_data_file_time" -ge "$day_begin" ] && \
+            [ "$geo_data_file_time" -lt "$day_end" ]; then
+            print_debug "geo_data file time is within current day."
+            geo_data="$(cat "$local_geo_data_file_name")"
+        else
+            print_debug "geo_data file time is NOT within current day."
+            fetch_geo_data
+        fi
+    else
+        print_debug "No geo_data file was found, or more than one was found."
+        fetch_geo_data
+    fi
 }
 
 # Check to see if there is already local sun_data saved from a previous run.
 check_local_sun_data() {
-    files="$(find_sun_data_files)"
-    number_of_files="$(find_sun_data_files | wc -l)"
+    sun_data_files="$(find_data_files "sun")"
+    number_of_sun_data_files="$(find_data_files "sun" | wc -l)"
 
-    if [ "$number_of_files" -eq 1 ]; then
+    if [ "$number_of_sun_data_files" -eq 1 ]; then
         print_debug "The following old sun_data files were found:"
-        print_debug "$files"
-        print_debug "Number of files: $number_of_files"
-        local_file_name="${files[0]}"
-        file_time_with_ending="${local_file_name##*\_}"
-        file_time="${file_time_with_ending%\.*}"
-        print_debug "The local sun_data file time is $file_time"
+        print_debug "$sun_data_files"
+        print_debug "Number of sun_data files: $number_of_sun_data_files"
+        local_sun_data_file_name="${sun_data_files[0]}"
+        sun_data_file_time_with_ending="${local_sun_data_file_name##*\_}"
+        sun_data_file_time="${sun_data_file_time_with_ending%\.*}"
+        print_debug "The local sun_data file time is $sun_data_file_time."
 
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
-        if [ "$file_time" -ge "$day_begin" ] && [ "$file_time" -lt "$day_end" ]
-        then
-            print_debug "File time is within current day"
-            sun_data="$(cat "$local_file_name")"
+        if [ "$sun_data_file_time" -ge "$day_begin" ] && \
+            [ "$sun_data_file_time" -lt "$day_end" ]; then
+            print_debug "sun_data file time is within current day."
+            sun_data="$(cat "$local_sun_data_file_name")"
         else
-            print_debug "File time is NOT within current day"
+            print_debug "sun_data file time is NOT within current day."
             fetch_sun_data
         fi
     else
-        print_debug "No files were found, or more than one file was found."
+        print_debug "No sun_data file was found, or more than one was found."
         fetch_sun_data
     fi
 }
 
-# Parse the json response to extract the wanted string.
-parse_response() {
+parse_geo_data_response() {
+    jq --arg x "$1" '.[$x]' <<< "$geo_data" | sed 's/\"//g'
+}
+
+parse_sun_data_response() {
     if [ "$#" -eq 1 ]; then
         jq --arg x "$1" '.[$x]' <<< "$sun_data" | sed 's/\"//g'
     elif [ "$#" -eq 2 ]; then
@@ -129,7 +179,7 @@ parse_response() {
         # Transform to unix timestamp for easy math.
         date --date "$date_time" +"%s"
     else
-        echo "ERROR: Illegal number of parameters to parse_response"
+        echo "ERROR: Illegal number of parameters to parse_sun_data_response."
         exit 1
     fi
 }
@@ -139,7 +189,7 @@ set_wallpaper() {
     trimmed_folder="${FOLDER%/}"
     wallpaper="${trimmed_folder}/${period}.jpg"
 
-    print_debug "Setting the wallpaper: $wallpaper"
+    print_debug "Setting the wallpaper: $wallpaper."
 
     feh --bg-fill "$wallpaper"
 }
@@ -156,26 +206,55 @@ take_a_guess() {
     [ "$hour" -ge 19 ] && [ "$hour" -lt 21 ] && period="nautical_dusk" && return
 }
 
+# Error handling if the geo_data status is not "success".
+validate_geo_data() {
+    i=1
+    while [ "$i" -le 3 ]; do
+         print_debug "Validation try: $i/3"
+         geo_api_status="$(parse_geo_data_response status)"
+         print_debug "Geo API Status: $geo_api_status"
+
+         if [ "$geo_api_status" != "success" ]; then
+             print_debug "The geo API request did not finish with a \"success\" status."
+             print_debug "Taking a guess on what time it could be."
+             take_a_guess
+             print_debug "I think it might be: $period"
+             set_wallpaper
+             if [ "$i" -eq 3 ]; then
+                 print_debug "Too many failed geo validation attempts."
+                 delete_old_data_files "geo"
+                 exit 1
+             fi
+             print_debug "Trying again in 10 seconds."
+             sleep 10
+             fetch_geo_data
+             ((++i))
+         else
+             break
+         fi
+    done
+}
+
 # Error handling if the sun_data is not "OK".
 validate_sun_data() {
     i=1
     while [ "$i" -le 3 ]; do
          print_debug "Validation try: $i/3"
-         api_status="$(parse_response status)"
-         print_debug "API Status: $api_status"
+         api_status="$(parse_sun_data_response status)"
+         print_debug "Sun API Status: $api_status"
 
          if [ "$api_status" != "OK" ]; then
-             print_debug "The API request did not finish with an \"OK\" status"
-             print_debug "Taking a guess on what time it could be"
+             print_debug "The API request did not finish with an \"OK\" status."
+             print_debug "Taking a guess on what time it could be."
              take_a_guess
              print_debug "I think it might be: $period"
              set_wallpaper
              if [ "$i" -eq 3 ]; then
-                 print_debug "Too many failed validation attempts"
-                 delete_old_files
+                 print_debug "Too many failed sun validation attempts."
+                 delete_old_data_files "sun"
                  exit 1
              fi
-             print_debug "Trying again in 10 seconds"
+             print_debug "Trying again in 10 seconds."
              sleep 10
              fetch_sun_data
              ((++i))
@@ -185,19 +264,31 @@ validate_sun_data() {
     done
 }
 
+# Populate $lat and $lon.
+populate_geo_vars() {
+    lat="$(parse_geo_data_response lat)"
+    lon="$(parse_geo_data_response lon)"
+    country="$(parse_geo_data_response country)"
+    regionName="$(parse_geo_data_response regionName)"
+    city="$(parse_geo_data_response city)"
+    print_debug "I think that I'm in $city, $regionName, $country."
+    print_debug "Using latitude: $lat"
+    print_debug "Using longitude: $lon"
+}
+
 # Populate the vars to compare against. In chronological order.
-populate_vars() {
-    naut_twi_begin="$(parse_response results nautical_twilight_begin)"
-    civ_twi_begin="$(parse_response results civil_twilight_begin)"
-    sunrise="$(parse_response results sunrise)"
-    noon="$(parse_response results solar_noon)"
-    sunset="$(parse_response results sunset)"
+populate_time_vars() {
+    naut_twi_begin="$(parse_sun_data_response results nautical_twilight_begin)"
+    civ_twi_begin="$(parse_sun_data_response results civil_twilight_begin)"
+    sunrise="$(parse_sun_data_response results sunrise)"
+    noon="$(parse_sun_data_response results solar_noon)"
+    sunset="$(parse_sun_data_response results sunset)"
     # I want to switch to another wallpaper when the afternoon is starting to
     # head toward sunset.
     length_of_afternoon=$((sunset-noon))
     late_afternoon=$((noon+length_of_afternoon/2))
-    civ_twi_end="$(parse_response results civil_twilight_end)"
-    naut_twi_end="$(parse_response results nautical_twilight_end)"
+    civ_twi_end="$(parse_sun_data_response results civil_twilight_end)"
+    naut_twi_end="$(parse_sun_data_response results nautical_twilight_end)"
 
     # The local time as a unix timestamp.
     time="$(date +"%s")"
@@ -218,16 +309,16 @@ determine_period() {
 debug_summary() {
     if [ $debug -eq 1 ]; then
         cat <<EOF
-Nautical twilight begins at $naut_twi_begin
-Civil twilight begins at $civ_twi_begin
-Sunrise is at $sunrise
-Noon is at $noon
-Late afternoon begins at $late_afternoon
-Sunset is at $sunset
-Civil twilight ends at $civ_twi_end
-Nautical twilight ends at $naut_twi_end
-The time is now $time
-It's currently: $period
+Nautical twilight begins at: $naut_twi_begin
+Civil twilight begins at:    $civ_twi_begin
+Sunrise is at:               $sunrise
+Noon is at:                  $noon
+Late afternoon begins at:    $late_afternoon
+Sunset is at:                $sunset
+Civil twilight ends at:      $civ_twi_end
+Nautical twilight ends at:   $naut_twi_end
+The time is now:             $time
+It's currently:              $period
 EOF
     fi
 }
@@ -235,8 +326,8 @@ EOF
 while getopts "dhx:y:f:" opt
    do
      case $opt in
-        x) LAT=$OPTARG;;
-        y) LONG=$OPTARG;;
+        x) lat=$OPTARG;;
+        y) lon=$OPTARG;;
         f) FOLDER=$OPTARG;;
         d) debug=1;;
         h) usage 0;;
@@ -249,7 +340,7 @@ main() {
     define_day
     check_local_sun_data
     validate_sun_data
-    populate_vars
+    populate_time_vars
     determine_period
     debug_summary
     set_wallpaper
