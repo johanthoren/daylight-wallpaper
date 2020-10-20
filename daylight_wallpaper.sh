@@ -37,24 +37,28 @@ EOF
     exit "$1"
 }
 
+timestamp() {
+    printf '%s' "[$(date +"%Y-%m-%d %T %Z")]"
+}
+
 debug=0
 
 print_debug() {
-    [ "$debug" -eq 1 ] && echo "$1"
+    [ "$debug" -eq 1 ] && printf "$(timestamp) %s\n" "$1"
+}
+die() {
+  case "${-}" in
+    (*i*) printf -- '\e[38;5;9mERROR: %s\e[m\n' "${0}:(${LINENO}): ${*}" >&2 ;;
+    (*)   printf -- 'ERROR: %s\n' "${0}:(${LINENO}): ${*}" >&2 ;;
+  esac
+  exit 1
 }
 
 verify_requirements() {
-    # Make sure that all required commands are available.
-    if ! command -v curl > /dev/null 2>&1; then
-        echo "ERROR: curl is not installed."
-        exit 1
-    elif ! command -v feh > /dev/null 2>&1; then
-        echo "ERROR: feh is not installed."
-        exit 1
-    elif ! command -v jq > /dev/null 2>&1; then
-        echo "ERROR: jq is not installed."
-        exit 1
-    fi
+# Make sure that all required commands are available.
+    command -v curl > /dev/null 2>&1 || die "curl is not installed."
+    command -v feh > /dev/null 2>&1 || die "feh is not installed."
+    command -v jq > /dev/null 2>&1 || die "jq is not installed."
 
     # Make sure that all required constants are set.
     [ -z "$FOLDER" ] && usage 1
@@ -77,7 +81,7 @@ fetch_geo_data() {
 
     new_geo_data_file="/tmp/geo_data_$(date +"%s").json"
     print_debug "Saving geolocation data to file: $new_geo_data_file."
-    echo "$geo_data" > "$new_geo_data_file"
+    printf '%s\n' "$geo_data" > "$new_geo_data_file"
 }
 
 # Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
@@ -94,7 +98,7 @@ fetch_sun_data() {
 
     new_sun_data_file="/tmp/sun_data_$(date +"%s").json"
     print_debug "Saving sunrise and sunset data to file: $new_sun_data_file."
-    echo "$sun_data" > "$new_sun_data_file"
+    printf '%s\n' "$sun_data" > "$new_sun_data_file"
 }
 
 # Find data files in /tmp.
@@ -185,8 +189,7 @@ parse_sun_data_response() {
         # Transform to unix timestamp for easy math.
         date --date "$date_time" +"%s"
     else
-        echo "ERROR: Illegal number of parameters to parse_sun_data_response."
-        exit 1
+        die "Illegal number of parameters to parse_sun_data_response."
     fi
 }
 
@@ -311,12 +314,13 @@ determine_period() {
     [ "$time" -ge "$late_afternoon" ] && [ "$time" -lt "$sunset" ] && period="late_afternoon" && return
     [ "$time" -ge "$sunset" ] && [ "$time" -lt "$civ_twi_end" ] && period="civil_dusk" && return
     [ "$time" -ge "$civ_twi_end" ] && [ "$time" -lt "$naut_twi_end" ] && period="nautical_dusk" && return
-    [ -z "$period" ] && echo "ERROR: Unable to determine period" && exit 1
+    [ -z "$period" ] && die "Unable to determine period"
 }
 
 debug_summary() {
     if [ $debug -eq 1 ]; then
         cat <<EOF
+$(timestamp) Here follows a summary:
 Nautical twilight begins at: $naut_twi_begin
 Civil twilight begins at:    $civ_twi_begin
 Sunrise is at:               $sunrise
