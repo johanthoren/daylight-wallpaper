@@ -16,7 +16,7 @@
 # PERFORMANCE OF THIS SOFTWARE.
 
 # Optional, set these vars here instead of passing them as options.
-#folder="$HOME/some_folder"
+#FOLDER="$HOME/some_folder"
 #LAT="XX.XXXXXXX"
 #LONG="XX.XXXXXXX"
 
@@ -58,7 +58,7 @@ verify_requirements() {
     fi
 
     # Make sure that all required variables are set.
-    [ -z "$LAT" ] || [ -z "$LONG" ] || [ -z "$folder" ] && usage 1
+    [ -z "$LAT" ] || [ -z "$LONG" ] || [ -z "$FOLDER" ] && usage 1
 }
 
 # Set the boundraries of the current day.
@@ -102,7 +102,7 @@ check_local_sun_data() {
         local_file_name="${files[0]}"
         file_time_with_ending="${local_file_name##*\_}"
         file_time="${file_time_with_ending%\.*}"
-        print_debug "File time is $file_time"
+        print_debug "The local sun_data file time is $file_time"
 
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
@@ -136,12 +136,12 @@ parse_response() {
 
 set_wallpaper() {
     # Remove any trailing slash before trying to use the folder.
-    trimmed_folder="${folder%/}"
-    WALLPAPER="${trimmed_folder}/${period}.jpg"
+    trimmed_folder="${FOLDER%/}"
+    wallpaper="${trimmed_folder}/${period}.jpg"
 
-    print_debug "Setting the wallpaper: $WALLPAPER"
+    print_debug "Setting the wallpaper: $wallpaper"
 
-    feh --bg-fill "$WALLPAPER"
+    feh --bg-fill "$wallpaper"
 }
 
 # Error handling if the sun_data is not "OK".
@@ -149,10 +149,10 @@ validate_sun_data() {
     try=0
     while [ "$try" -le 2 ]; do
          print_debug "Validation try: $try"
-         API_STATUS="$(parse_response status)"
-         print_debug "API Status: $API_STATUS"
+         api_status="$(parse_response status)"
+         print_debug "API Status: $api_status"
 
-         if [ "$API_STATUS" != "OK" ]; then
+         if [ "$api_status" != "OK" ]; then
              print_debug "The API request did not finish with an \"OK\" status"
              print_debug "Trying again in 10 seconds"
              sleep 10
@@ -174,46 +174,46 @@ validate_sun_data() {
 
 # Populate the vars to compare against. In chronological order.
 populate_vars() {
-    NAUT_TWI_BEGIN="$(parse_response results nautical_twilight_begin)"
-    CIV_TWI_BEGIN="$(parse_response results civil_twilight_begin)"
-    SUNRISE="$(parse_response results sunrise)"
-    NOON="$(parse_response results solar_noon)"
-    SUNSET="$(parse_response results sunset)"
+    naut_twi_begin="$(parse_response results nautical_twilight_begin)"
+    civ_twi_begin="$(parse_response results civil_twilight_begin)"
+    sunrise="$(parse_response results sunrise)"
+    noon="$(parse_response results solar_noon)"
+    sunset="$(parse_response results sunset)"
     # I want to switch to another wallpaper when the afternoon is starting to head
     # toward sunset.
-    LENGTH_OF_AFTERNOON=$((SUNSET-NOON))
-    LATE_AFTERNOON=$((NOON+LENGTH_OF_AFTERNOON/2))
-    CIV_TWI_END="$(parse_response results civil_twilight_end)"
-    NAUT_TWI_END="$(parse_response results nautical_twilight_end)"
+    length_of_afternoon=$((sunset-noon))
+    late_afternoon=$((noon+length_of_afternoon/2))
+    civ_twi_end="$(parse_response results civil_twilight_end)"
+    naut_twi_end="$(parse_response results nautical_twilight_end)"
 
     # The local time as a unix timestamp.
-    TIME="$(date +"%s")"
+    time="$(date +"%s")"
 }
 
 determine_period() {
-    [ "$TIME" -ge "$NAUT_TWI_END" ] || [ "$TIME" -lt "$NAUT_TWI_BEGIN" ] && period="night" && return
-    [ "$TIME" -ge "$NAUT_TWI_BEGIN" ] && [ "$TIME" -lt "$CIV_TWI_BEGIN" ] && period="nautical_dawn" && return
-    [ "$TIME" -ge "$CIV_TWI_BEGIN" ] && [ "$TIME" -lt "$SUNRISE" ] && period="civil_dawn" && return
-    [ "$TIME" -ge "$SUNRISE" ] && [ "$TIME" -lt "$NOON" ] && period="morning" && return
-    [ "$TIME" -ge "$NOON" ] && [ "$TIME" -lt "$LATE_AFTERNOON" ] && period="noon" && return
-    [ "$TIME" -ge "$LATE_AFTERNOON" ] && [ "$TIME" -lt "$SUNSET" ] && period="late_afternoon" && return
-    [ "$TIME" -ge "$SUNSET" ] && [ "$TIME" -lt "$CIV_TWI_END" ] && period="civil_dusk" && return
-    [ "$TIME" -ge "$CIV_TWI_END" ] && [ "$TIME" -lt "$NAUT_TWI_END" ] && period="nautical_dusk" && return
+    [ "$time" -ge "$naut_twi_end" ] || [ "$time" -lt "$naut_twi_begin" ] && period="night" && return
+    [ "$time" -ge "$naut_twi_begin" ] && [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
+    [ "$time" -ge "$civ_twi_begin" ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
+    [ "$time" -ge "$sunrise" ] && [ "$time" -lt "$noon" ] && period="morning" && return
+    [ "$time" -ge "$noon" ] && [ "$time" -lt "$late_afternoon" ] && period="noon" && return
+    [ "$time" -ge "$late_afternoon" ] && [ "$time" -lt "$sunset" ] && period="late_afternoon" && return
+    [ "$time" -ge "$sunset" ] && [ "$time" -lt "$civ_twi_end" ] && period="civil_dusk" && return
+    [ "$time" -ge "$civ_twi_end" ] && [ "$time" -lt "$naut_twi_end" ] && period="nautical_dusk" && return
     [ -z "$period" ] && echo "ERROR: Unable to determine period" && exit 1
 }
 
 debug_summary() {
     if [ $debug -eq 1 ]; then
         cat <<EOF
-The nautical twilight begins at $NAUT_TWI_BEGIN
-The civil twilight begins at $CIV_TWI_BEGIN
-The sunrise is at $SUNRISE
-The noon is at $NOON
-The late afternoon begins at $LATE_AFTERNOON
-The sunset is at $SUNSET
-The civil twilight ends at $CIV_TWI_END
-The nautical twilight ends at $NAUT_TWI_END
-The time is now $TIME
+Nautical twilight begins at $naut_twi_begin
+Civil twilight begins at $civ_twi_begin
+Sunrise is at $sunrise
+Noon is at $noon
+Late afternoon begins at $late_afternoon
+Sunset is at $sunset
+Civil twilight ends at $civ_twi_end
+Nautical twilight ends at $naut_twi_end
+The time is now $time
 It's currently: $period
 EOF
     fi
@@ -224,7 +224,7 @@ while getopts "dhx:y:f:" opt
      case $opt in
         x) LAT=$OPTARG;;
         y) LONG=$OPTARG;;
-        f) folder=$OPTARG;;
+        f) FOLDER=$OPTARG;;
         d) debug=1;;
         h) usage 0;;
         *) usage 1;;
