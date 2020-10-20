@@ -106,7 +106,8 @@ check_local_sun_data() {
 
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
-        if [ "$file_time" -ge "$day_begin" ] && [ "$file_time" -lt "$day_end" ]; then
+        if [ "$file_time" -ge "$day_begin" ] && [ "$file_time" -lt "$day_end" ]
+        then
             print_debug "File time is within current day"
             sun_data="$(cat "$local_file_name")"
         else
@@ -179,8 +180,8 @@ populate_vars() {
     sunrise="$(parse_response results sunrise)"
     noon="$(parse_response results solar_noon)"
     sunset="$(parse_response results sunset)"
-    # I want to switch to another wallpaper when the afternoon is starting to head
-    # toward sunset.
+    # I want to switch to another wallpaper when the afternoon is starting to
+    # head toward sunset.
     length_of_afternoon=$((sunset-noon))
     late_afternoon=$((noon+length_of_afternoon/2))
     civ_twi_end="$(parse_response results civil_twilight_end)"
