@@ -2,10 +2,12 @@
 A simple script to set certain wallpapers at various times during the day
 depending on the current daylight at your location. 
 
-I'm using these with a collection of MacOS Big Sur wallpapers that I found 
-online. I'm sure you can find it by using your favorite search engine, I don't 
-want to include them for copyright reasons. But it will work with any images you
-seem fit. Just rename the files in accordance with the help text instructions.
+You can use this with any type of pictures, but it works very well with landscape
+photos that change as the day progresses, such as used by a very popular closed 
+source operating system based in California. I'm sure you can find such pictures 
+by using your favorite search engine, I don't want to include any for copyright 
+reasons. But it will work with any images you seem fit. Just rename the files in 
+accordance with the help text instructions.
 
 ## Example usage
 I recommend using this with **cron** and a few environment variables as such:
