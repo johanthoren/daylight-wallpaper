@@ -144,11 +144,11 @@ set_wallpaper() {
     feh --bg-fill "$WALLPAPER"
 }
 
-# Exit if the sun_data is not "OK".
-verify_sun_data() {
+# Error handling if the sun_data is not "OK".
+validate_sun_data() {
     try=0
     while [ "$try" -le 2 ]; do
-         print_debug "Try: $try"
+         print_debug "Validation try: $try"
          API_STATUS="$(parse_response status)"
          print_debug "API Status: $API_STATUS"
 
@@ -159,7 +159,7 @@ verify_sun_data() {
              fetch_sun_data
              try+=1
              if [ "$try" -eq 2 ]; then
-                 print_debug "Too many failed verification attempts"
+                 print_debug "Too many failed validation attempts"
                  print_debug "Falling back to default wallpaper"
                  delete_old_files
                  period="default"
@@ -235,7 +235,7 @@ main() {
     verify_requirements
     define_day
     check_local_sun_data
-    verify_sun_data
+    validate_sun_data
     populate_vars
     determine_period
     debug_summary
