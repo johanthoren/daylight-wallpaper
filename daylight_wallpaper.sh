@@ -168,7 +168,7 @@ verify_sun_data() {
              fi
          fi
 
-         try+=2
+         try+=3
     done
 }
 
