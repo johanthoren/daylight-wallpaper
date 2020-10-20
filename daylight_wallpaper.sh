@@ -63,10 +63,10 @@ verify_requirements() {
 
 # Set the boundraries of the current day.
 define_day() {
-    DAY_BEGIN="$(date --date "$(date --iso)" +"%s")"
-    print_debug "The day begins at $DAY_BEGIN"
-    DAY_END="$(date --date "$(date --iso) 23:59:59" +"%s")"
-    print_debug "The day ends at $DAY_END"
+    day_begin="$(date --date "$(date --iso)" +"%s")"
+    print_debug "The day begins at $day_begin"
+    day_end="$(date --date "$(date --iso) 23:59:59" +"%s")"
+    print_debug "The day ends at $day_end"
 }
 
 delete_old_files() {
@@ -106,7 +106,7 @@ check_local_sun_data() {
 
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
-        if [ "$file_time" -ge "$DAY_BEGIN" ] && [ "$file_time" -lt "$DAY_END" ]; then
+        if [ "$file_time" -ge "$day_begin" ] && [ "$file_time" -lt "$day_end" ]; then
             print_debug "File time is within current day"
             sun_data="$(cat "$local_file_name")"
         else
