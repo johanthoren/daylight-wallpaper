@@ -46,6 +46,7 @@ debug=0
 print_debug() {
     [ "$debug" -eq 1 ] && printf "$(timestamp) %s\n" "$1"
 }
+
 die() {
   case "${-}" in
     (*i*) printf -- '\e[38;5;9mERROR: %s\e[m\n' "${0}:(${LINENO}): ${*}" >&2 ;;
