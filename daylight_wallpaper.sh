@@ -127,7 +127,8 @@ check_local_geo_data() {
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
         if [ "$geo_data_file_time" -ge "$day_begin" ] && \
-            [ "$geo_data_file_time" -lt "$day_end" ]; then
+           [ "$geo_data_file_time" -lt "$day_end" ]
+        then
             print_debug "geo_data file time is within current day."
             geo_data="$(cat "$local_geo_data_file_name")"
         else
@@ -157,7 +158,8 @@ check_local_sun_data() {
         # If there already is a file that has been fetched the last day,
         # then use it to avoid using the API.
         if [ "$sun_data_file_time" -ge "$day_begin" ] && \
-            [ "$sun_data_file_time" -lt "$day_end" ]; then
+           [ "$sun_data_file_time" -lt "$day_end" ]
+        then
             print_debug "sun_data file time is within current day."
             sun_data="$(cat "$local_sun_data_file_name")"
         else
@@ -247,8 +249,10 @@ validate_sun_data() {
          api_status="$(parse_sun_data_response status)"
          print_debug "Sun API Status: $api_status"
 
-         if [ "$api_status" != "OK" ]; then
-             print_debug "The API request did not finish with an \"OK\" status."
+         if [ "$api_status" != "OK" ] || \
+            [ "$(parse_sun_data_response results nautical_twilight_begin)" -lt "$day_begin" ]
+         then
+             print_debug "Unable to determine the time based on the API response."
              print_debug "Taking a guess on what time it could be."
              take_a_guess
              print_debug "I think it might be: $period"
