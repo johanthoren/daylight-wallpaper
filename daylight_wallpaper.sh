@@ -157,7 +157,7 @@ validate_sun_data() {
              print_debug "Trying again in 10 seconds"
              sleep 10
              fetch_sun_data
-             try+=1
+             let "try+=1"
              if [ "$try" -eq 2 ]; then
                  print_debug "Too many failed validation attempts"
                  print_debug "Falling back to default wallpaper"
@@ -167,7 +167,7 @@ validate_sun_data() {
                  exit 1
              fi
          else
-             try+=3
+             let "try+=3"
          fi
     done
 }
