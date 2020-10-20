@@ -2,6 +2,10 @@
 A simple script to set certain wallpapers at various times during the day
 depending on the current daylight at your location. 
 
+The script will try to guess the location if no coordinates are provided.
+However, it's faster and more precise to set the coordinates manually as
+described below.
+
 You can use this with any type of pictures, but it works very well with landscape
 photos that change as the day progresses, such as used by a very popular closed 
 source operating system based in California. I'm sure you can find such pictures 
@@ -21,4 +25,5 @@ Set the `$LATITUDE`, `$LONGITUDE`, and `$WALLPAPER_FOLDER` variables in your
 You can also write them out explicitly.
 
 ## Credit
-This script uses the API at [Sunrise-Sunset](https://sunrise-sunset.org/api).
+This script uses the API at [Sunrise-Sunset](https://sunrise-sunset.org/api) as
+well as [IP-API](https://ip-api.com/).
