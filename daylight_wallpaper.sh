@@ -191,15 +191,14 @@ populate_vars() {
 }
 
 determine_period() {
-    [ "$TIME" -ge "$NAUT_TWI_END" ] || [ "$TIME" -lt "$NAUT_TWI_BEGIN" ] && period="night"
-    [ "$TIME" -ge "$NAUT_TWI_BEGIN" ] && [ "$TIME" -lt "$CIV_TWI_BEGIN" ] && period="nautical_dawn"
-    [ "$TIME" -ge "$CIV_TWI_BEGIN" ] && [ "$TIME" -lt "$SUNRISE" ] && period="civil_dawn"
-    [ "$TIME" -ge "$SUNRISE" ] && [ "$TIME" -lt "$NOON" ] && period="morning"
-    [ "$TIME" -ge "$NOON" ] && [ "$TIME" -lt "$LATE_AFTERNOON" ] && period="noon"
-    [ "$TIME" -ge "$LATE_AFTERNOON" ] && [ "$TIME" -lt "$SUNSET" ] && period="late_afternoon"
-    [ "$TIME" -ge "$SUNSET" ] && [ "$TIME" -lt "$CIV_TWI_END" ] && period="civil_dusk"
-    [ "$TIME" -ge "$CIV_TWI_END" ] && [ "$TIME" -lt "$NAUT_TWI_END" ] && period="nautical_dusk"
-    print_debug "It's currently: $period"
+    [ "$TIME" -ge "$NAUT_TWI_END" ] || [ "$TIME" -lt "$NAUT_TWI_BEGIN" ] && period="night" && return
+    [ "$TIME" -ge "$NAUT_TWI_BEGIN" ] && [ "$TIME" -lt "$CIV_TWI_BEGIN" ] && period="nautical_dawn" && return
+    [ "$TIME" -ge "$CIV_TWI_BEGIN" ] && [ "$TIME" -lt "$SUNRISE" ] && period="civil_dawn" && return
+    [ "$TIME" -ge "$SUNRISE" ] && [ "$TIME" -lt "$NOON" ] && period="morning" && return
+    [ "$TIME" -ge "$NOON" ] && [ "$TIME" -lt "$LATE_AFTERNOON" ] && period="noon" && return
+    [ "$TIME" -ge "$LATE_AFTERNOON" ] && [ "$TIME" -lt "$SUNSET" ] && period="late_afternoon" && return
+    [ "$TIME" -ge "$SUNSET" ] && [ "$TIME" -lt "$CIV_TWI_END" ] && period="civil_dusk" && return
+    [ "$TIME" -ge "$CIV_TWI_END" ] && [ "$TIME" -lt "$NAUT_TWI_END" ] && period="nautical_dusk" && return
     [ -z "$period" ] && echo "ERROR: Unable to determine period" && exit 1
 }
 
@@ -215,6 +214,7 @@ The sunset is at $SUNSET
 The civil twilight ends at $CIV_TWI_END
 The nautical twilight ends at $NAUT_TWI_END
 The time is now $TIME
+It's currently: $period
 EOF
     fi
 }
