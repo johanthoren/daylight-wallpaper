@@ -166,9 +166,9 @@ validate_sun_data() {
                  set_wallpaper
                  exit 1
              fi
+         else
+             try+=3
          fi
-
-         try+=3
     done
 }
 
