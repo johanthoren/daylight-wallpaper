@@ -68,27 +68,22 @@ define_day() {
     print_debug "The day ends at $day_end."
 }
 
-delete_old_data_files() {
-    print_debug "Deleting old ${1}_data files."
-    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER" -delete
-}
-
 # Fetch geolocation information based on IP from ip-api.com
 fetch_geo_data() {
-    delete_old_data_files "geo"
-    print_debug "Fetching new geo_data from the API."
+    delete_old_files "geo"
+    print_debug "Fetching new geolocation data from the API."
     geo_data="$(curl -s \
-        http://ip-api.com/json/\?fields\=status,lat,lon,country,regionName,city)"
+        http://ip-api.com/json/\?fields=status,lat,lon,country,regionName,city)"
 
     new_geo_data_file="/tmp/geo_data_$(date +"%s").json"
-    print_debug "Saving geo data to file: $new_geo_data_file."
+    print_debug "Saving geolocation data to file: $new_geo_data_file."
     echo "$geo_data" > "$new_geo_data_file"
 }
 
 # Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
 fetch_sun_data() {
-    delete_old_data_files "sun"
-    print_debug "Fetching new sun_data from the API"
+    delete_old_files "sun"
+    print_debug "Fetching new sunrise and sunset data from the API"
     if [ -z "$lat" ] || [ -z "$lon" ]; then
         check_local_geo_data
         validate_geo_data
@@ -98,14 +93,23 @@ fetch_sun_data() {
         https://api.sunrise-sunset.org/json\?lat="$lat"\&lng="$lon"\&formatted=0)"
 
     new_sun_data_file="/tmp/sun_data_$(date +"%s").json"
-    print_debug "Saving sun data to file: $new_sun_data_file."
+    print_debug "Saving sunrise and sunset data to file: $new_sun_data_file."
     echo "$sun_data" > "$new_sun_data_file"
 }
 
+# Find data files in /tmp.
+# Provide eith "geo" or "sun" as first argument to find files of that type.
 find_data_files() {
     find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER"
 }
-
+#
+# Delete old files in /tmp.
+# Provide eith "geo" or "sun" as first argument to delete files of that type.
+delete_old_files() {
+    print_debug "Deleting old ${1}_data files."
+    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER" -delete
+}
+#
 # Check to see if there is already local geo_data saved from a previous run.
 check_local_geo_data() {
     geo_data_files="$(find_data_files "geo")"
@@ -222,7 +226,7 @@ validate_geo_data() {
              set_wallpaper
              if [ "$i" -eq 3 ]; then
                  print_debug "Too many failed geo validation attempts."
-                 delete_old_data_files "geo"
+                 delete_old_files "geo"
                  exit 1
              fi
              print_debug "Trying again in 10 seconds."
@@ -251,7 +255,7 @@ validate_sun_data() {
              set_wallpaper
              if [ "$i" -eq 3 ]; then
                  print_debug "Too many failed sun validation attempts."
-                 delete_old_data_files "sun"
+                 delete_old_files "sun"
                  exit 1
              fi
              print_debug "Trying again in 10 seconds."
