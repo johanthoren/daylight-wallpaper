@@ -81,7 +81,7 @@ fetch_sun_data() {
     sun_data="$(curl -s \
         https://api.sunrise-sunset.org/json\?lat="$LAT"\&lng="$LONG"\&formatted=0)"
 
-    new_sun_data_file="/tmp/sun_data_"$(date +"%s")".json"
+    new_sun_data_file="/tmp/sun_data_$(date +"%s").json"
     print_debug "Saving sun data to file: $new_sun_data_file"
     echo "$sun_data" > "$new_sun_data_file"
 }
@@ -146,9 +146,9 @@ set_wallpaper() {
 
 # Error handling if the sun_data is not "OK".
 validate_sun_data() {
-    try=0
-    while [ "$try" -le 2 ]; do
-         print_debug "Validation try: $try"
+    i=0
+    while [ "$i" -le 2 ]; do
+         print_debug "Validation try: $i"
          api_status="$(parse_response status)"
          print_debug "API Status: $api_status"
 
@@ -157,8 +157,8 @@ validate_sun_data() {
              print_debug "Trying again in 10 seconds"
              sleep 10
              fetch_sun_data
-             let "try+=1"
-             if [ "$try" -eq 2 ]; then
+             ((++i))
+             if [ "$i" -eq 2 ]; then
                  print_debug "Too many failed validation attempts"
                  print_debug "Falling back to default wallpaper"
                  delete_old_files
@@ -167,7 +167,7 @@ validate_sun_data() {
                  exit 1
              fi
          else
-             let "try+=3"
+             break
          fi
     done
 }
