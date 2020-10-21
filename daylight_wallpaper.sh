@@ -120,28 +120,30 @@ check_local_geo_data() {
     geo_data_files="$(find_data_files "geo")"
     number_of_geo_data_files="$(find_data_files "geo" | wc -l)"
 
-    if [ "$number_of_geo_data_files" -eq 1 ]; then
-        print_debug "The following old geo_data files were found:"
-        print_debug "$geo_data_files"
-        print_debug "Number of geo_data files: $number_of_geo_data_files"
-        local_geo_data_file_name="${geo_data_files[0]}"
-        geo_data_file_time_with_ending="${local_geo_data_file_name##*\_}"
-        geo_data_file_time="${geo_data_file_time_with_ending%\.*}"
-        print_debug "The local sun_data file time is $geo_data_file_time."
+    print_debug "The following old geo_data files were found:"
+    print_debug "$geo_data_files"
+    print_debug "Number of geo_data files: $number_of_geo_data_files"
 
-        # If there already is a file that has been fetched the last day,
-        # then use it to avoid using the API.
-        if [ "$geo_data_file_time" -ge "$day_begin" ] && \
-           [ "$geo_data_file_time" -lt "$day_end" ]
-        then
-            print_debug "geo_data file time is within current day."
-            geo_data="$(cat "$local_geo_data_file_name")"
-        else
-            print_debug "geo_data file time is NOT within current day."
-            fetch_geo_data
-        fi
-    else
+    if [ ! "$number_of_geo_data_files" -eq 1 ]; then
         print_debug "No geo_data file was found, or more than one was found."
+        fetch_geo_data
+        return
+    fi
+
+    local_geo_data_file_name="${geo_data_files[0]}"
+    geo_data_file_time_with_ending="${local_geo_data_file_name##*\_}"
+    geo_data_file_time="${geo_data_file_time_with_ending%\.*}"
+    print_debug "The local sun_data file time is $geo_data_file_time."
+
+    # If there already is a file that has been fetched the last day,
+    # then use it to avoid using the API.
+    if [ "$geo_data_file_time" -ge "$day_begin" ] && \
+       [ "$geo_data_file_time" -lt "$day_end" ]
+    then
+        print_debug "geo_data file time is within current day."
+        geo_data="$(cat "$local_geo_data_file_name")"
+    else
+        print_debug "geo_data file time is NOT within current day."
         fetch_geo_data
     fi
 }
@@ -151,28 +153,30 @@ check_local_sun_data() {
     sun_data_files="$(find_data_files "sun")"
     number_of_sun_data_files="$(find_data_files "sun" | wc -l)"
 
-    if [ "$number_of_sun_data_files" -eq 1 ]; then
-        print_debug "The following old sun_data files were found:"
-        print_debug "$sun_data_files"
-        print_debug "Number of sun_data files: $number_of_sun_data_files"
-        local_sun_data_file_name="${sun_data_files[0]}"
-        sun_data_file_time_with_ending="${local_sun_data_file_name##*\_}"
-        sun_data_file_time="${sun_data_file_time_with_ending%\.*}"
-        print_debug "The local sun_data file time is $sun_data_file_time."
+    print_debug "The following old sun_data files were found:"
+    print_debug "$sun_data_files"
+    print_debug "Number of sun_data files: $number_of_sun_data_files"
 
-        # If there already is a file that has been fetched the last day,
-        # then use it to avoid using the API.
-        if [ "$sun_data_file_time" -ge "$day_begin" ] && \
-           [ "$sun_data_file_time" -lt "$day_end" ]
-        then
-            print_debug "sun_data file time is within current day."
-            sun_data="$(cat "$local_sun_data_file_name")"
-        else
-            print_debug "sun_data file time is NOT within current day."
-            fetch_sun_data
-        fi
-    else
+    if [ ! "$number_of_sun_data_files" -eq 1 ]; then
         print_debug "No sun_data file was found, or more than one was found."
+        fetch_sun_data
+        return
+    fi
+
+    local_sun_data_file_name="${sun_data_files[0]}"
+    sun_data_file_time_with_ending="${local_sun_data_file_name##*\_}"
+    sun_data_file_time="${sun_data_file_time_with_ending%\.*}"
+    print_debug "The local sun_data file time is $sun_data_file_time."
+
+    # If there already is a file that has been fetched the last day,
+    # then use it to avoid using the API.
+    if [ "$sun_data_file_time" -ge "$day_begin" ] && \
+       [ "$sun_data_file_time" -lt "$day_end" ]
+    then
+        print_debug "sun_data file time is within current day."
+        sun_data="$(cat "$local_sun_data_file_name")"
+    else
+        print_debug "sun_data file time is NOT within current day."
         fetch_sun_data
     fi
 }
@@ -206,14 +210,25 @@ set_wallpaper() {
 
 take_a_guess() {
     hour="$(date +"%H")"
-    [ "$hour" -ge 21 ] || [ "$hour" -lt 4 ] && period="night" && return
-    [ "$hour" -ge 4 ] && [ "$hour" -lt 6 ] && period="nautical_dawn" && return
-    [ "$hour" -ge 6 ] && [ "$hour" -lt 8 ] && period="civil_dawn" && return
-    [ "$hour" -ge 8 ] && [ "$hour" -lt 12 ] && period="morning" && return
-    [ "$hour" -ge 12 ] && [ "$hour" -lt 15 ] && period="noon" && return
-    [ "$hour" -ge 15 ] && [ "$hour" -lt 18 ] && period="late_afternoon" && return
-    [ "$hour" -ge 18 ] && [ "$hour" -lt 19 ] && period="civil_dusk" && return
-    [ "$hour" -ge 19 ] && [ "$hour" -lt 21 ] && period="nautical_dusk" && return
+
+    case "$hour" in
+       0[4-5])
+           period="nautical_dawn" ;;
+       0[6-7])
+           period="civil_dawn" ;;
+       0[8-9]|1[0-1])
+           period="morning" ;;
+       1[2-4])
+           period="noon" ;;
+       1[5-7])
+           period="late_afternoon" ;;
+       18)
+           period="civil_dusk" ;;
+       19|20)
+           period="nautical_dusk" ;;
+       *)
+           period="night" ;;
+    esac
 }
 
 # Error handling if the geo_data status is not "success".
