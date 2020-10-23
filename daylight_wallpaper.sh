@@ -41,6 +41,10 @@ timestamp() {
     printf '%s' "[$(date +"%Y-%m-%d %T %Z")]"
 }
 
+to_time() {
+    date --date "@${1}" +"%T"
+}
+
 debug=0
 
 print_debug() {
@@ -337,15 +341,15 @@ debug_summary() {
     if [ $debug -eq 1 ]; then
         cat <<EOF
 $(timestamp) Here follows a summary:
-Nautical twilight begins at: $naut_twi_begin
-Civil twilight begins at:    $civ_twi_begin
-Sunrise is at:               $sunrise
-Noon is at:                  $noon
-Late afternoon begins at:    $late_afternoon
-Sunset is at:                $sunset
-Civil twilight ends at:      $civ_twi_end
-Nautical twilight ends at:   $naut_twi_end
-The time is now:             $time
+Nautical twilight begins at: $naut_twi_begin / $(to_time $naut_twi_begin)
+Civil twilight begins at:    $civ_twi_begin / $(to_time $civ_twi_begin)
+Sunrise is at:               $sunrise / $(to_time $sunrise)
+Noon is at:                  $noon / $(to_time $noon)
+Late afternoon begins at:    $late_afternoon / $(to_time $late_afternoon)
+Sunset is at:                $sunset / $(to_time $sunset)
+Civil twilight ends at:      $civ_twi_end / $(to_time $civ_twi_end)
+Nautical twilight ends at:   $naut_twi_end / $(to_time $naut_twi_end)
+The time is now:             $time / $(to_time $time)
 It's currently:              $period
 EOF
     fi
