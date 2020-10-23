@@ -313,7 +313,7 @@ populate_time_vars() {
     # I want to switch to another wallpaper when the afternoon is starting to
     # head toward sunset.
     length_of_afternoon=$((sunset-noon))
-    late_afternoon=$((noon+length_of_afternoon/2))
+    late_afternoon=$((noon+(length_of_afternoon/5)*3))
     civ_twi_end="$(parse_sun_data_response results civil_twilight_end)"
     naut_twi_end="$(parse_sun_data_response results nautical_twilight_end)"
 
