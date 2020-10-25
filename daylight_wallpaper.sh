@@ -19,10 +19,19 @@
 #FOLDER="$HOME/some_folder"
 #lat=""
 #lon=""
+purge=0
+verbose=0
 
 usage() {
     cat <<EOF
-Usage: $0 -h | [-d] [-x LATITUDE -y LONGITUDE] -f FOLDER
+Usage: $0 -h | [-p] [-v] [-x LATITUDE -y LONGITUDE] -f FOLDER
+
+       -f Folder containing the wallpapers
+       -h Print this text
+       -p Purge old files
+       -v Verbose output
+       -x Latitude  -- must be used together with -y
+       -y Longitude -- must be used together with -x
 
        The FOLDER needs to contain the following images:
        - night.jpg
@@ -45,12 +54,27 @@ to_time() {
     date --date "@${1}" +"%T"
 }
 
-debug=0
-
-print_debug() {
-    [ "$debug" -eq 1 ] && printf "$(timestamp) %s\n" "$1"
+print_v() {
+    [ "$verbose" -eq 1 ] && printf "$(timestamp) %s\n" "$1"
 }
 
+# Delete old files in /tmp.
+# Provide eith "geo" or "sun" as first argument to delete files of that type.
+delete_old_files() {
+    print_v "Deleting old ${1}_data files."
+    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER" -delete
+}
+
+# Purge all old files.
+purge_old_files() {
+    if [ "$purge" -eq 1 ]; then
+        print_v "Purging old files."
+        delete_old_files "geo"
+        delete_old_files "sun"
+    fi
+}
+
+# Exit with an ERROR message.
 die() {
   case "${-}" in
     (*i*) printf -- '\e[38;5;9mERROR: %s\e[m\n' "${0}:(${LINENO}): ${*}" >&2 ;;
@@ -59,10 +83,8 @@ die() {
   exit 1
 }
 
-x_and_y_warning="When using options -x or -y, both options must be used."
-
 verify_requirements() {
-# Make sure that all required commands are available.
+    # Make sure that all required commands are available.
     command -v curl > /dev/null 2>&1 || die "curl is not installed."
     command -v feh > /dev/null 2>&1 || die "feh is not installed."
     command -v jq > /dev/null 2>&1 || die "jq is not installed."
@@ -72,33 +94,33 @@ verify_requirements() {
 
     # If you use options x or y, you have to use both.
     { [ -n "$lat" ] && [ -z "$lon" ]; } || { [ -z "$lat" ] && [ -n "$lon" ]; } \
-        && die "$x_and_y_warning"
+        && die "When using options -x or -y, both options must be used."
 }
 
 # Set the boundraries of the current day.
 define_day() {
     day_begin="$(date --date "$(date --iso)" +"%s")"
-    print_debug "The day begins at $day_begin."
+    print_v "The day begins at $day_begin."
     day_end="$(date --date "$(date --iso) 23:59:59" +"%s")"
-    print_debug "The day ends at $day_end."
+    print_v "The day ends at $day_end."
 }
 
 # Fetch geolocation information based on IP from ip-api.com
 fetch_geo_data() {
     delete_old_files "geo"
-    print_debug "Fetching new geolocation data from the API."
+    print_v "Fetching new geolocation data from the API."
     geo_data="$(curl -s \
         http://ip-api.com/json/\?fields=status,lat,lon,country,regionName,city)"
 
     new_geo_data_file="/tmp/geo_data_$(date +"%s").json"
-    print_debug "Saving geolocation data to file: $new_geo_data_file."
+    print_v "Saving geolocation data to file: $new_geo_data_file."
     printf '%s\n' "$geo_data" > "$new_geo_data_file"
 }
 
 # Fetch the Sunrise and Sunset data from https://sunrise-sunset.org/api
 fetch_sun_data() {
     delete_old_files "sun"
-    print_debug "Fetching new sunrise and sunset data from the API"
+    print_v "Fetching new sunrise and sunset data from the API"
     if [ -z "$lat" ] || [ -z "$lon" ]; then
         check_local_geo_data
         validate_geo_data
@@ -108,7 +130,7 @@ fetch_sun_data() {
         https://api.sunrise-sunset.org/json\?lat="$lat"\&lng="$lon"\&formatted=0)"
 
     new_sun_data_file="/tmp/sun_data_$(date +"%s").json"
-    print_debug "Saving sunrise and sunset data to file: $new_sun_data_file."
+    print_v "Saving sunrise and sunset data to file: $new_sun_data_file."
     printf '%s\n' "$sun_data" > "$new_sun_data_file"
 }
 
@@ -117,25 +139,18 @@ fetch_sun_data() {
 find_data_files() {
     find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER"
 }
-#
-# Delete old files in /tmp.
-# Provide eith "geo" or "sun" as first argument to delete files of that type.
-delete_old_files() {
-    print_debug "Deleting old ${1}_data files."
-    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER" -delete
-}
-#
+
 # Check to see if there is already local geo_data saved from a previous run.
 check_local_geo_data() {
     geo_data_files="$(find_data_files "geo")"
     number_of_geo_data_files="$(find_data_files "geo" | wc -l)"
 
-    print_debug "The following old geo_data files were found:"
-    print_debug "$geo_data_files"
-    print_debug "Number of geo_data files: $number_of_geo_data_files"
+    print_v "The following old geo_data files were found:"
+    print_v "$geo_data_files"
+    print_v "Number of geo_data files: $number_of_geo_data_files"
 
     if [ ! "$number_of_geo_data_files" -eq 1 ]; then
-        print_debug "No geo_data file was found, or more than one was found."
+        print_v "No geo_data file was found, or more than one was found."
         fetch_geo_data
         return
     fi
@@ -143,17 +158,17 @@ check_local_geo_data() {
     local_geo_data_file_name="${geo_data_files[0]}"
     geo_data_file_time_with_ending="${local_geo_data_file_name##*\_}"
     geo_data_file_time="${geo_data_file_time_with_ending%\.*}"
-    print_debug "The local sun_data file time is $geo_data_file_time."
+    print_v "The local sun_data file time is $geo_data_file_time."
 
     # If there already is a file that has been fetched the last day,
     # then use it to avoid using the API.
     if [ "$geo_data_file_time" -ge "$day_begin" ] && \
        [ "$geo_data_file_time" -lt "$day_end" ]
     then
-        print_debug "geo_data file time is within current day."
+        print_v "geo_data file time is within current day."
         geo_data="$(cat "$local_geo_data_file_name")"
     else
-        print_debug "geo_data file time is NOT within current day."
+        print_v "geo_data file time is NOT within current day."
         fetch_geo_data
     fi
 }
@@ -163,12 +178,12 @@ check_local_sun_data() {
     sun_data_files="$(find_data_files "sun")"
     number_of_sun_data_files="$(find_data_files "sun" | wc -l)"
 
-    print_debug "The following old sun_data files were found:"
-    print_debug "$sun_data_files"
-    print_debug "Number of sun_data files: $number_of_sun_data_files"
+    print_v "The following old sun_data files were found:"
+    print_v "$sun_data_files"
+    print_v "Number of sun_data files: $number_of_sun_data_files"
 
     if [ ! "$number_of_sun_data_files" -eq 1 ]; then
-        print_debug "No sun_data file was found, or more than one was found."
+        print_v "No sun_data file was found, or more than one was found."
         fetch_sun_data
         return
     fi
@@ -176,17 +191,17 @@ check_local_sun_data() {
     local_sun_data_file_name="${sun_data_files[0]}"
     sun_data_file_time_with_ending="${local_sun_data_file_name##*\_}"
     sun_data_file_time="${sun_data_file_time_with_ending%\.*}"
-    print_debug "The local sun_data file time is $sun_data_file_time."
+    print_v "The local sun_data file time is $sun_data_file_time."
 
     # If there already is a file that has been fetched the last day,
     # then use it to avoid using the API.
     if [ "$sun_data_file_time" -ge "$day_begin" ] && \
        [ "$sun_data_file_time" -lt "$day_end" ]
     then
-        print_debug "sun_data file time is within current day."
+        print_v "sun_data file time is within current day."
         sun_data="$(cat "$local_sun_data_file_name")"
     else
-        print_debug "sun_data file time is NOT within current day."
+        print_v "sun_data file time is NOT within current day."
         fetch_sun_data
     fi
 }
@@ -213,7 +228,7 @@ set_wallpaper() {
     trimmed_folder="${FOLDER%/}"
     wallpaper="${trimmed_folder}/${period}.jpg"
 
-    print_debug "Setting the wallpaper: $wallpaper."
+    print_v "Setting the wallpaper: $wallpaper."
 
     feh --bg-fill "$wallpaper"
 }
@@ -245,22 +260,22 @@ take_a_guess() {
 validate_geo_data() {
     i=1
     while [ "$i" -le 3 ]; do
-         print_debug "Validation try: $i/3"
+         print_v "Validation try: $i/3"
          geo_api_status="$(parse_geo_data_response status)"
-         print_debug "Geo API Status: $geo_api_status"
+         print_v "Geo API Status: $geo_api_status"
 
          if [ "$geo_api_status" != "success" ]; then
-             print_debug "The geo API request did not finish with a \"success\" status."
-             print_debug "Taking a guess on what time it could be."
+             print_v "The geo API request did not finish with a \"success\" status."
+             print_v "Taking a guess on what time it could be."
              take_a_guess
-             print_debug "I think it might be: $period"
+             print_v "I think it might be: $period"
              set_wallpaper
              if [ "$i" -eq 3 ]; then
-                 print_debug "Too many failed geo validation attempts."
+                 print_v "Too many failed geo validation attempts."
                  delete_old_files "geo"
                  exit 1
              fi
-             print_debug "Trying again in 10 seconds."
+             print_v "Trying again in 10 seconds."
              sleep 10
              fetch_geo_data
              ((++i))
@@ -274,24 +289,24 @@ validate_geo_data() {
 validate_sun_data() {
     i=1
     while [ "$i" -le 3 ]; do
-         print_debug "Validation try: $i/3"
+         print_v "Validation try: $i/3"
          api_status="$(parse_sun_data_response status)"
-         print_debug "Sun API Status: $api_status"
+         print_v "Sun API Status: $api_status"
 
          if [ "$api_status" != "OK" ] || \
             [ "$(parse_sun_data_response results nautical_twilight_begin)" -lt "$day_begin" ]
          then
-             print_debug "Unable to determine the time based on the API response."
-             print_debug "Taking a guess on what time it could be."
+             print_v "Unable to determine the time based on the API response."
+             print_v "Taking a guess on what time it could be."
              take_a_guess
-             print_debug "I think it might be: $period"
+             print_v "I think it might be: $period"
              set_wallpaper
              if [ "$i" -eq 3 ]; then
-                 print_debug "Too many failed sun validation attempts."
+                 print_v "Too many failed sun validation attempts."
                  delete_old_files "sun"
                  exit 1
              fi
-             print_debug "Trying again in 10 seconds."
+             print_v "Trying again in 10 seconds."
              sleep 10
              fetch_sun_data
              ((++i))
@@ -308,9 +323,9 @@ populate_geo_vars() {
     country="$(parse_geo_data_response country)"
     regionName="$(parse_geo_data_response regionName)"
     city="$(parse_geo_data_response city)"
-    print_debug "I think that I'm in $city, $regionName, $country."
-    print_debug "Using latitude: $lat"
-    print_debug "Using longitude: $lon"
+    print_v "I think that I'm in $city, $regionName, $country."
+    print_v "Using latitude: $lat"
+    print_v "Using longitude: $lon"
 }
 
 # Populate the vars to compare against. In chronological order.
@@ -343,8 +358,8 @@ determine_period() {
     [ -z "$period" ] && die "Unable to determine period"
 }
 
-debug_summary() {
-    if [ $debug -eq 1 ]; then
+verbose_summary() {
+    if [ $verbose -eq 1 ]; then
         cat <<EOF
 $(timestamp) Here follows a summary:
 Nautical twilight begins at: "$naut_twi_begin" / "$(to_time "$naut_twi_begin")"
@@ -361,13 +376,14 @@ EOF
     fi
 }
 
-while getopts "dhx:y:f:" opt
+while getopts "hpvx:y:f:" opt
    do
      case $opt in
         x) lat=$OPTARG;;
         y) lon=$OPTARG;;
         f) FOLDER=$OPTARG;;
-        d) debug=1;;
+        p) purge=1;;
+        v) verbose=1;;
         h) usage 0;;
         *) usage 1;;
      esac
@@ -375,12 +391,13 @@ done
 
 main() {
     verify_requirements
+    purge_old_files
     define_day
     check_local_sun_data
     validate_sun_data
     populate_time_vars
     determine_period
-    debug_summary
+    verbose_summary
     set_wallpaper
 }
 
