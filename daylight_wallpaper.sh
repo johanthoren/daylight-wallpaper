@@ -17,8 +17,8 @@
 
 # Optional, set these vars here instead of passing them as options.
 #FOLDER="$HOME/some_folder"
-#lat="XX.XXXXXXX"
-#lon="XX.XXXXXXX"
+#lat=""
+#lon=""
 
 usage() {
     cat <<EOF
@@ -59,6 +59,8 @@ die() {
   exit 1
 }
 
+x_and_y_warning="When using options -x or -y, both options must be used."
+
 verify_requirements() {
 # Make sure that all required commands are available.
     command -v curl > /dev/null 2>&1 || die "curl is not installed."
@@ -67,6 +69,10 @@ verify_requirements() {
 
     # Make sure that all required constants are set.
     [ -z "$FOLDER" ] && usage 1
+
+    # If you use options x or y, you have to use both.
+    { [ -n "$lat" ] && [ -z "$lon" ]; } || { [ -z "$lat" ] && [ -n "$lon" ]; } \
+        && die "$x_and_y_warning"
 }
 
 # Set the boundraries of the current day.
@@ -341,16 +347,16 @@ debug_summary() {
     if [ $debug -eq 1 ]; then
         cat <<EOF
 $(timestamp) Here follows a summary:
-Nautical twilight begins at: $naut_twi_begin / $(to_time $naut_twi_begin)
-Civil twilight begins at:    $civ_twi_begin / $(to_time $civ_twi_begin)
-Sunrise is at:               $sunrise / $(to_time $sunrise)
-Noon is at:                  $noon / $(to_time $noon)
-Late afternoon begins at:    $late_afternoon / $(to_time $late_afternoon)
-Sunset is at:                $sunset / $(to_time $sunset)
-Civil twilight ends at:      $civ_twi_end / $(to_time $civ_twi_end)
-Nautical twilight ends at:   $naut_twi_end / $(to_time $naut_twi_end)
-The time is now:             $time / $(to_time $time)
-It's currently:              $period
+Nautical twilight begins at: "$naut_twi_begin" / "$(to_time "$naut_twi_begin")"
+Civil twilight begins at:    "$civ_twi_begin" / "$(to_time "$civ_twi_begin")"
+Sunrise is at:               "$sunrise" / "$(to_time "$sunrise")"
+Noon is at:                  "$noon" / "$(to_time "$noon")"
+Late afternoon begins at:    "$late_afternoon" / "$(to_time "$late_afternoon")"
+Sunset is at:                "$sunset" / "$(to_time "$sunset")"
+Civil twilight ends at:      "$civ_twi_end" / "$(to_time "$civ_twi_end")"
+Nautical twilight ends at:   "$naut_twi_end" / "$(to_time "$naut_twi_end")"
+The time is now:             "$time" / "$(to_time "$time")"
+It's currently:              "$period"
 EOF
     fi
 }
