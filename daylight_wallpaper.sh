@@ -22,6 +22,18 @@
 purge=0
 verbose=0
 
+die() {
+  case "${-}" in
+    (*i*) printf -- '\e[38;5;9mERROR: %s\e[m\n' "${0}:(${LINENO}): ${*}" >&2 ;;
+    (*)   printf -- 'ERROR: %s\n' "${0}:(${LINENO}): ${*}" >&2 ;;
+  esac
+  exit 1
+}
+
+print_v() {
+    [ "$verbose" -eq 1 ] && printf "$(timestamp) %s\n" "$1"
+}
+
 usage() {
     cat <<EOF
 Usage: $0 -h | [-p] [-v] [-x LATITUDE -y LONGITUDE] -f FOLDER
@@ -54,10 +66,6 @@ to_time() {
     date --date "@${1}" +"%T"
 }
 
-print_v() {
-    [ "$verbose" -eq 1 ] && printf "$(timestamp) %s\n" "$1"
-}
-
 # Delete old files in /tmp.
 # Provide eith "geo" or "sun" as first argument to delete files of that type.
 delete_old_files() {
@@ -72,15 +80,6 @@ purge_old_files() {
         delete_old_files "geo"
         delete_old_files "sun"
     fi
-}
-
-# Exit with an ERROR message.
-die() {
-  case "${-}" in
-    (*i*) printf -- '\e[38;5;9mERROR: %s\e[m\n' "${0}:(${LINENO}): ${*}" >&2 ;;
-    (*)   printf -- 'ERROR: %s\n' "${0}:(${LINENO}): ${*}" >&2 ;;
-  esac
-  exit 1
 }
 
 verify_requirements() {
@@ -362,16 +361,16 @@ verbose_summary() {
     if [ $verbose -eq 1 ]; then
         cat <<EOF
 $(timestamp) Here follows a summary:
-Nautical twilight begins at: "$naut_twi_begin" / "$(to_time "$naut_twi_begin")"
-Civil twilight begins at:    "$civ_twi_begin" / "$(to_time "$civ_twi_begin")"
-Sunrise is at:               "$sunrise" / "$(to_time "$sunrise")"
-Noon is at:                  "$noon" / "$(to_time "$noon")"
-Late afternoon begins at:    "$late_afternoon" / "$(to_time "$late_afternoon")"
-Sunset is at:                "$sunset" / "$(to_time "$sunset")"
-Civil twilight ends at:      "$civ_twi_end" / "$(to_time "$civ_twi_end")"
-Nautical twilight ends at:   "$naut_twi_end" / "$(to_time "$naut_twi_end")"
-The time is now:             "$time" / "$(to_time "$time")"
-It's currently:              "$period"
+Nautical twilight begins at: $naut_twi_begin / $(to_time "$naut_twi_begin")
+Civil twilight begins at:    $civ_twi_begin / $(to_time "$civ_twi_begin")
+Sunrise is at:               $sunrise / $(to_time "$sunrise")
+Noon is at:                  $noon / $(to_time "$noon")
+Late afternoon begins at:    $late_afternoon / $(to_time "$late_afternoon")
+Sunset is at:                $sunset / $(to_time "$sunset")
+Civil twilight ends at:      $civ_twi_end / $(to_time "$civ_twi_end")
+Nautical twilight ends at:   $naut_twi_end / $(to_time "$naut_twi_end")
+The time is now:             $time / $(to_time "$time")
+It's currently:              $period
 EOF
     fi
 }
