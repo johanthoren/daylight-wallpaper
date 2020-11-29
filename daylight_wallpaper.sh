@@ -19,6 +19,7 @@
 #FOLDER="$HOME/some_folder"
 #lat=""
 #lon=""
+cmd="feh --bg-fill"
 purge=0
 verbose=0
 
@@ -36,8 +37,10 @@ print_v() {
 
 usage() {
     cat <<EOF
-Usage: $0 -h | [-p] [-v] [-x LATITUDE -y LONGITUDE] -f FOLDER
+Usage: $0 -h | [-c COMMAND] [-p] [-v] [-x LATITUDE -y LONGITUDE] -f FOLDER
 
+       -c Command to use to set the wallpaper instead of feh
+          (assuming that the path to the wallpaper should follow the command)
        -f Folder containing the wallpapers
        -h Print this text
        -p Purge old files
@@ -85,8 +88,11 @@ purge_old_files() {
 verify_requirements() {
     # Make sure that all required commands are available.
     command -v curl > /dev/null 2>&1 || die "curl is not installed."
-    command -v feh > /dev/null 2>&1 || die "feh is not installed."
     command -v jq > /dev/null 2>&1 || die "jq is not installed."
+
+    if [[ $cmd == feh* ]]; then
+        command -v feh > /dev/null 2>&1 || die "feh is not installed."
+    fi
 
     # Make sure that all required constants are set.
     [ -z "$FOLDER" ] && usage 1
@@ -229,7 +235,7 @@ set_wallpaper() {
 
     print_v "Setting the wallpaper: $wallpaper."
 
-    feh --bg-fill "$wallpaper"
+    exec $cmd $wallpaper
 }
 
 take_a_guess() {
@@ -375,12 +381,13 @@ EOF
     fi
 }
 
-while getopts "hpvx:y:f:" opt
+while getopts "c:hpvx:y:f:" opt
    do
      case $opt in
         x) lat=$OPTARG;;
         y) lon=$OPTARG;;
         f) FOLDER=$OPTARG;;
+        c) cmd=$OPTARG;;
         p) purge=1;;
         v) verbose=1;;
         h) usage 0;;
