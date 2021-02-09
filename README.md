@@ -16,7 +16,13 @@ accordance with the help text instructions.
 ## Example usage
 I recommend using this with **cron** and a few environment variables as such:
 ``` sh
-*/10 * * * * . $HOME/.profile; DISPLAY=:0 /usr/bin/bash $HOME/.local/bin/daylight_wallpaper.sh -x $LATITUDE -y $LONGITUDE -f $WALLPAPER_FOLDER
+*/10 * * * * . $HOME/.profile; DISPLAY=:0 /usr/bin/bash $HOME/bin/daylight_wallpaper.sh -x $LATITUDE -y $LONGITUDE -f $WALLPAPER_FOLDER
+```
+
+The following works very well on Ubuntu 20.04:
+
+``` sh
+*/10 * * * * . $HOME/.profile; DISPLAY=:0 /usr/bin/bash $HOME/bin/daylight_wallpaper.sh -x $LATITUDE -y $LONGITUDE -f $WALLPAPER_FOLDER -c "gsettings set org.gnome.desktop.background picture-uri file:///"
 ```
 
 Set the `$LATITUDE`, `$LONGITUDE`, and `$WALLPAPER_FOLDER` variables in your
