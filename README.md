@@ -22,7 +22,7 @@ I recommend using this with **cron** and a few environment variables as such:
 The following works very well on Ubuntu 20.04:
 
 ``` sh
-*/10 * * * * . $HOME/.profile; DISPLAY=:0 /usr/bin/bash $HOME/bin/daylight_wallpaper.sh -x $LATITUDE -y $LONGITUDE -f $WALLPAPER_FOLDER -c "gsettings set org.gnome.desktop.background picture-uri file:///"
+*/10 * * * * . $HOME/.profile; DISPLAY=:0.0 dbus-launch --exit-with-session /usr/bin/bash $HOME/bin/daylight_wallpaper.sh -x $LATITUDE -y $LONGITUDE -f $WALLPAPER_FOLDER -g
 ```
 
 Set the `$LATITUDE`, `$LONGITUDE`, and `$WALLPAPER_FOLDER` variables in your

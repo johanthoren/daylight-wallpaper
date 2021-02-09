@@ -20,8 +20,11 @@
 #lat=""
 #lon=""
 cmd="feh --bg-fill"
+gnome=0
 purge=0
 verbose=0
+
+user=$(whoami)
 
 die() {
   case "${-}" in
@@ -37,11 +40,12 @@ print_v() {
 
 usage() {
     cat <<EOF
-Usage: $0 -h | [-c COMMAND] [-p] [-v] [-x LATITUDE -y LONGITUDE] -f FOLDER
+Usage: $0 -h | [-c COMMAND] [-g] [-p] [-v] [-x LATITUDE -y LONGITUDE] -f FOLDER
 
        -c Command to use to set the wallpaper instead of feh
           (assuming that the path to the wallpaper should follow the command)
        -f Folder containing the wallpapers
+       -g Use GNOME tools to set wallpaper and screensaver (experimental)
        -h Print this text
        -p Purge old files
        -v Verbose output
@@ -69,11 +73,23 @@ to_time() {
     date --date "@${1}" +"%T"
 }
 
+on_gnome() {
+    if [ $gnome -eq 1 ]; then
+        pid=$(pgrep gnome-session | tail -n1)
+        export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS \
+            /proc/"$pid"/environ |\
+            tr '\0' '\n' |\
+            sed -e s/DBUS_SESSION_BUS_ADDRESS=//)
+
+        cmd="gsettings set org.gnome.desktop.background picture-uri file:///"
+    fi
+}
+
 # Delete old files in /tmp.
 # Provide eith "geo" or "sun" as first argument to delete files of that type.
 delete_old_files() {
     print_v "Deleting old ${1}_data files."
-    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER" -delete
+    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$user" -delete
 }
 
 # Purge all old files.
@@ -142,7 +158,7 @@ fetch_sun_data() {
 # Find data files in /tmp.
 # Provide eith "geo" or "sun" as first argument to find files of that type.
 find_data_files() {
-    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$USER"
+    find /tmp -maxdepth 1 -name "${1}_data*.json" -user "$user"
 }
 
 # Check to see if there is already local geo_data saved from a previous run.
@@ -235,11 +251,21 @@ set_wallpaper() {
 
     print_v "Setting the wallpaper: $wallpaper."
 
-    if [  ${cmd: -1} = "/" ]; then
-        exec ${cmd}${wallpaper}
+    if [ $gnome -eq 1 ]; then
+        ${cmd}${wallpaper}
     else
-        exec ${cmd} ${wallpaper}
+        ${cmd} ${wallpaper}
     fi
+}
+
+set_gnome_screensaver() {
+    # Remove any trailing slash before trying to use the folder.
+    trimmed_folder="${FOLDER%/}"
+    wallpaper="${trimmed_folder}/${period}.jpg"
+
+    print_v "Setting the GNOME screensaver: $wallpaper."
+
+    gsettings set org.gnome.desktop.screensaver picture-uri file:///${wallpaper}
 }
 
 take_a_guess() {
@@ -385,12 +411,13 @@ EOF
     fi
 }
 
-while getopts "c:hpvx:y:f:" opt
+while getopts "c:ghpvx:y:f:" opt
    do
      case $opt in
         x) lat=$OPTARG;;
         y) lon=$OPTARG;;
         f) FOLDER=$OPTARG;;
+        g) gnome=1;;
         c) cmd=$OPTARG;;
         p) purge=1;;
         v) verbose=1;;
@@ -400,6 +427,7 @@ while getopts "c:hpvx:y:f:" opt
 done
 
 main() {
+    on_gnome
     verify_requirements
     purge_old_files
     define_day
@@ -409,6 +437,9 @@ main() {
     determine_period
     verbose_summary
     set_wallpaper
+    if [ $gnome -eq 1 ]; then
+        set_gnome_screensaver
+    fi
 }
 
 main
