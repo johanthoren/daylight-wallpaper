@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# Copyright 2020 Johan Thorén <johan@thoren.xyz>
+# Copyright 2020-2021 Johan Thorén <johan@thoren.xyz>
 
 # Licensed under the ISC license:
 
