@@ -235,7 +235,11 @@ set_wallpaper() {
 
     print_v "Setting the wallpaper: $wallpaper."
 
-    exec $cmd $wallpaper
+    if [  ${cmd: -1} = "/" ]; then
+        exec ${cmd}${wallpaper}
+    else
+        exec ${cmd} ${wallpaper}
+    fi
 }
 
 take_a_guess() {
