@@ -397,16 +397,16 @@ verbose_summary() {
     if [ $verbose -eq 1 ]; then
         cat <<EOF
 $(timestamp) Here follows a summary:
-Nautical twilight begins at: $naut_twi_begin / $(to_time "$naut_twi_begin")
-Civil twilight begins at:    $civ_twi_begin / $(to_time "$civ_twi_begin")
-Sunrise is at:               $sunrise / $(to_time "$sunrise")
-Noon is at:                  $noon / $(to_time "$noon")
-Late afternoon begins at:    $late_afternoon / $(to_time "$late_afternoon")
-Sunset is at:                $sunset / $(to_time "$sunset")
-Civil twilight ends at:      $civ_twi_end / $(to_time "$civ_twi_end")
-Nautical twilight ends at:   $naut_twi_end / $(to_time "$naut_twi_end")
-The time is now:             $time / $(to_time "$time")
-It's currently:              $period
+Nautical dawn begins at:    $naut_twi_begin / $(to_time "$naut_twi_begin")
+Civil dawn begins at:       $civ_twi_begin / $(to_time "$civ_twi_begin")
+Sunrise is at:              $sunrise / $(to_time "$sunrise")
+Noon is at:                 $noon / $(to_time "$noon")
+Late afternoon begins at:   $late_afternoon / $(to_time "$late_afternoon")
+Sunset is at:               $sunset / $(to_time "$sunset")
+Civil dusk ends at:         $civ_twi_end / $(to_time "$civ_twi_end")
+Nautical dusk ends at:      $naut_twi_end / $(to_time "$naut_twi_end")
+The time is now:            $time / $(to_time "$time")
+It's currently:             $period
 EOF
     fi
 }
