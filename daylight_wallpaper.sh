@@ -75,7 +75,7 @@ to_time() {
 
 on_gnome() {
     if [ $gnome -eq 1 ]; then
-        pid=$(pgrep gnome-session | tail -n1)
+        pid=$(pgrep gnome-session | head -n1)
         export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS \
             /proc/"$pid"/environ |\
             tr '\0' '\n' |\
