@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # Copyright 2020-2021 Johan Thorén <johan@thoren.xyz>
 
 # Licensed under the ISC license:
@@ -25,6 +25,12 @@ purge=0
 verbose=0
 
 user=$(whoami)
+
+if [[ $(uname) == OpenBSD ]];then
+	date_cmd="gdate"
+else
+	date_cmd="date"
+fi
 
 die() {
   case "${-}" in
@@ -66,11 +72,11 @@ EOF
 }
 
 timestamp() {
-    printf '%s' "[$(date +"%Y-%m-%d %T %Z")]"
+    printf '%s' "[$("$date_cmd" +"%Y-%m-%d %T %Z")]"
 }
 
 to_time() {
-    date --date "@${1}" +"%T"
+    $date_cmd --date "@${1}" +"%T"
 }
 
 on_gnome() {
@@ -120,9 +126,9 @@ verify_requirements() {
 
 # Set the boundraries of the current day.
 define_day() {
-    day_begin="$(date --date "$(date --iso)" +"%s")"
+    day_begin="$("$date_cmd" --date "$("$date_cmd" --iso)" +"%s")"
     print_v "The day begins at $day_begin."
-    day_end="$(date --date "$(date --iso) 23:59:59" +"%s")"
+    day_end="$("$date_cmd" --date "$("$date_cmd" --iso) 23:59:59" +"%s")"
     print_v "The day ends at $day_end."
 }
 
@@ -133,7 +139,7 @@ fetch_geo_data() {
     geo_data="$(curl -s \
         http://ip-api.com/json/\?fields=status,lat,lon,country,regionName,city)"
 
-    new_geo_data_file="/tmp/geo_data_$(date +"%s").json"
+    new_geo_data_file="/tmp/geo_data_$("$date_cmd" +"%s").json"
     print_v "Saving geolocation data to file: $new_geo_data_file."
     printf '%s\n' "$geo_data" > "$new_geo_data_file"
 }
@@ -150,7 +156,7 @@ fetch_sun_data() {
     sun_data="$(curl -s \
         https://api.sunrise-sunset.org/json\?lat="$lat"\&lng="$lon"\&formatted=0)"
 
-    new_sun_data_file="/tmp/sun_data_$(date +"%s").json"
+    new_sun_data_file="/tmp/sun_data_$("$date_cmd" +"%s").json"
     print_v "Saving sunrise and sunset data to file: $new_sun_data_file."
     printf '%s\n' "$sun_data" > "$new_sun_data_file"
 }
@@ -238,7 +244,7 @@ parse_sun_data_response() {
         date_time="$(jq --arg x "$1" --arg y "$2" '.[$x][$y]' \
             <<< "$sun_data" | sed 's/\"//g')"
         # Transform to unix timestamp for easy math.
-        date --date "$date_time" +"%s"
+        "$date_cmd" --date "$date_time" +"%s"
     else
         die "Illegal number of parameters to parse_sun_data_response."
     fi
@@ -269,7 +275,7 @@ set_gnome_screensaver() {
 }
 
 take_a_guess() {
-    hour="$(date +"%H")"
+    hour="$("$date_cmd" +"%H")"
 
     case "$hour" in
        0[4-5])
@@ -378,7 +384,7 @@ populate_time_vars() {
     naut_twi_end="$(parse_sun_data_response results nautical_twilight_end)"
 
     # The local time as a unix timestamp.
-    time="$(date +"%s")"
+    time="$("$date_cmd" +"%s")"
 }
 
 determine_period() {
