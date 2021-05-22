@@ -335,7 +335,8 @@ validate_sun_data() {
          print_v "Sun API Status: $api_status"
 
          if [ "$api_status" != "OK" ] || \
-            [ "$(parse_sun_data_response results nautical_twilight_begin)" -lt "$day_begin" ]
+             [ "$(parse_sun_data_response results nautical_twilight_begin)" -lt "$day_begin" ] && \
+             [  "$(parse_sun_data_response results nautical_twilight_begin)" -ne 1 ];
          then
              print_v "Unable to determine the time based on the API response."
              print_v "Taking a guess on what time it could be."
@@ -388,14 +389,18 @@ populate_time_vars() {
 }
 
 determine_period() {
-    [ "$time" -ge "$naut_twi_end" ] || [ "$time" -lt "$naut_twi_begin" ] && period="night" && return
+    [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
+    [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ] && [ "$time" -ge "$sunset" ] && period="civil_dusk" && return
+    [ "$naut_twi_begin" -eq 1 ] && [ "$naut_twi_end" -eq 1 ] && [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
+    [ "$naut_twi_begin" -eq 1 ] && [ "$naut_twi_end" -eq 1 ] && [ "$time" -ge "$civ_twi_end" ] && period="nautical_dusk" && return
+    [ "$time" -ge "$naut_twi_end" ] && [ "$time" -lt "$naut_twi_begin" ] && period="night" && return
     [ "$time" -ge "$naut_twi_begin" ] && [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
-    [ "$time" -ge "$civ_twi_begin" ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
+    [ "$civ_twi_begin" -ne 1 ] && [ "$civ_twi_end" -ne 1 ] && [ "$time" -ge "$civ_twi_begin" ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
     [ "$time" -ge "$sunrise" ] && [ "$time" -lt "$noon" ] && period="morning" && return
     [ "$time" -ge "$noon" ] && [ "$time" -lt "$late_afternoon" ] && period="noon" && return
     [ "$time" -ge "$late_afternoon" ] && [ "$time" -lt "$sunset" ] && period="late_afternoon" && return
     [ "$time" -ge "$sunset" ] && [ "$time" -lt "$civ_twi_end" ] && period="civil_dusk" && return
-    [ "$time" -ge "$civ_twi_end" ] && [ "$time" -lt "$naut_twi_end" ] && period="nautical_dusk" && return
+    [ "$civ_twi_begin" -eq 1 ] || [ "$civ_twi_end" -eq 1 ] || [ "$time" -ge "$civ_twi_end" ] && [ "$time" -lt "$naut_twi_end" ] && period="nautical_dusk" && return
     [ -z "$period" ] && die "Unable to determine period"
 }
 
