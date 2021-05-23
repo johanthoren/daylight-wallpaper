@@ -389,6 +389,11 @@ populate_time_vars() {
 }
 
 determine_period() {
+    # The sun API returns 1 if a state doesn't begin or end within the limits
+    # of the current day. In other words, if civil_twi_begin is 1, that means
+    # that either it began before the start of the day, ie. that 'night' never
+    # occured, or that it never begins at all. In some northern and southern
+    # locations this will be the case during the summer months.
     [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
     [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ] && [ "$time" -ge "$sunset" ] && period="civil_dusk" && return
     [ "$naut_twi_begin" -eq 1 ] && [ "$naut_twi_end" -eq 1 ] && [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
