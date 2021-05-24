@@ -82,10 +82,12 @@ to_time() {
 on_gnome() {
     if [ $gnome -eq 1 ]; then
         pid=$(pgrep gnome-session | head -n1)
-        export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS \
+        DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS \
             /proc/"$pid"/environ |\
             tr '\0' '\n' |\
             sed -e s/DBUS_SESSION_BUS_ADDRESS=//)
+
+        export DBUS_SESSION_BUS_ADDRESS
 
         cmd="gsettings set org.gnome.desktop.background picture-uri file:///"
     fi
@@ -176,7 +178,7 @@ check_local_geo_data() {
     print_v "$geo_data_files"
     print_v "Number of geo_data files: $number_of_geo_data_files"
 
-    if [ ! "$number_of_geo_data_files" -eq 1 ]; then
+    if [ "$number_of_geo_data_files" -ne 1 ]; then
         print_v "No geo_data file was found, or more than one was found."
         fetch_geo_data
         return
@@ -271,7 +273,7 @@ set_gnome_screensaver() {
 
     print_v "Setting the GNOME screensaver: $wallpaper."
 
-    gsettings set org.gnome.desktop.screensaver picture-uri file:///${wallpaper}
+    gsettings set org.gnome.desktop.screensaver picture-uri file:///"${wallpaper}"
 }
 
 take_a_guess() {
@@ -394,18 +396,41 @@ determine_period() {
     # that either it began before the start of the day, ie. that 'night' never
     # occured, or that it never begins at all. In some northern and southern
     # locations this will be the case during the summer months.
-    [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
-    [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ] && [ "$time" -ge "$sunset" ] && period="civil_dusk" && return
-    [ "$naut_twi_begin" -eq 1 ] && [ "$naut_twi_end" -eq 1 ] && [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
-    [ "$naut_twi_begin" -eq 1 ] && [ "$naut_twi_end" -eq 1 ] && [ "$time" -ge "$civ_twi_end" ] && period="nautical_dusk" && return
-    [ "$time" -ge "$naut_twi_end" ] && [ "$time" -lt "$naut_twi_begin" ] && period="night" && return
-    [ "$time" -ge "$naut_twi_begin" ] && [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
-    [ "$civ_twi_begin" -ne 1 ] && [ "$civ_twi_end" -ne 1 ] && [ "$time" -ge "$civ_twi_begin" ] && [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
-    [ "$time" -ge "$sunrise" ] && [ "$time" -lt "$noon" ] && period="morning" && return
-    [ "$time" -ge "$noon" ] && [ "$time" -lt "$late_afternoon" ] && period="noon" && return
-    [ "$time" -ge "$late_afternoon" ] && [ "$time" -lt "$sunset" ] && period="late_afternoon" && return
-    [ "$time" -ge "$sunset" ] && [ "$time" -lt "$civ_twi_end" ] && period="civil_dusk" && return
-    [ "$civ_twi_begin" -eq 1 ] || [ "$civ_twi_end" -eq 1 ] || [ "$time" -ge "$civ_twi_end" ] && [ "$time" -lt "$naut_twi_end" ] && period="nautical_dusk" && return
+
+    if [ "$civ_twi_begin" -eq 1 ] && [ "$civ_twi_end" -eq 1 ]; then
+        [ "$time" -lt "$sunrise" ] && period="civil_dawn" && return
+        [ "$time" -ge "$sunset" ] && period="civil_dusk" && return
+    fi
+
+    if [ "$naut_twi_begin" -eq 1 ] && [ "$naut_twi_end" -eq 1 ]; then
+        [ "$time" -lt "$civ_twi_begin" ] && period="nautical_dawn" && return
+        [ "$time" -ge "$civ_twi_end" ] && period="nautical_dusk" && return
+    fi
+
+    [ "$time" -ge "$naut_twi_end" ] && [ "$time" -lt "$naut_twi_begin" ] && \
+        period="night" && return
+
+    [ "$time" -ge "$naut_twi_begin" ] && [ "$time" -lt "$civ_twi_begin" ] && \
+        period="nautical_dawn" &&  return
+
+    [ "$time" -ge "$civ_twi_begin" ] && [ "$time" -lt "$sunrise" ] && \
+        period="civil_dawn" && return
+
+    [ "$time" -ge "$sunrise" ] && [ "$time" -lt "$noon" ] && \
+        period="morning" && return
+
+    [ "$time" -ge "$noon" ] && [ "$time" -lt "$late_afternoon" ] && \
+        period="noon" && return
+
+    [ "$time" -ge "$late_afternoon" ] && [ "$time" -lt "$sunset" ] && \
+        period="late_afternoon" && return
+
+    [ "$time" -ge "$sunset" ] && [ "$time" -lt "$civ_twi_end" ] && \
+        period="civil_dusk" && return
+
+    [ "$time" -ge "$civ_twi_end" ] && [ "$time" -lt "$naut_twi_end" ] && \
+        period="nautical_dusk" && return
+
     [ -z "$period" ] && die "Unable to determine period"
 }
 
