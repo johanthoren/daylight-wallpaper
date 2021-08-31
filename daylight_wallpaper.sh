@@ -407,7 +407,7 @@ determine_period() {
         [ "$time" -ge "$civ_twi_end" ] && period="nautical_dusk" && return
     fi
 
-    [ "$time" -ge "$naut_twi_end" ] && [ "$time" -lt "$naut_twi_begin" ] && \
+    [ "$time" -ge "$naut_twi_end" ] || [ "$time" -lt "$naut_twi_begin" ] && \
         period="night" && return
 
     [ "$time" -ge "$naut_twi_begin" ] && [ "$time" -lt "$civ_twi_begin" ] && \
